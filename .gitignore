@@ -1,0 +1,12 @@
+backend/.venv/
+backend/css.db
+backend/.env
+uploads/
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+*.db-shm
+*.db-wal
