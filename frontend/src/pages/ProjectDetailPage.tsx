@@ -12,7 +12,7 @@ type Tab = 'input' | 'structure' | 'slides'
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { currentProject, loading, fetchProject, updateContent, analyzeContent, generateSlides } =
+  const { currentProject, loading, error, fetchProject, updateContent, analyzeContent, generateSlides } =
     useProjectStore()
   const [tab, setTab] = useState<Tab>('input')
   const [content, setContent] = useState('')
