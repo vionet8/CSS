@@ -1,3 +1,4 @@
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 from typing import List
 
@@ -7,17 +8,20 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./css.db"
     UPLOAD_DIR: str = "../uploads"
     CORS_ORIGINS_STR: str = "http://localhost:5173"
-    # Railway/Vercel 本番URL（デプロイ後に設定）
     FRONTEND_URL: str = ""
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def convert_db_url(cls, v: str) -> str:
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+asyncpg://", 1)
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
 
     @property
     def ASYNC_DATABASE_URL(self) -> str:
-        url = self.DATABASE_URL
-        if url.startswith("postgres://"):
-            return url.replace("postgres://", "postgresql+asyncpg://", 1)
-        if url.startswith("postgresql://"):
-            return url.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return url
+        return self.DATABASE_URL
 
     @property
     def CORS_ORIGINS(self) -> List[str]:
