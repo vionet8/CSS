@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://css-backend.up.railway.app/:path*"
+      "destination": "https://css-production-fd4b.up.railway.app/:path*"
     }
   ]
 }
