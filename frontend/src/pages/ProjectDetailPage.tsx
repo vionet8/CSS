@@ -71,6 +71,15 @@ export default function ProjectDetailPage() {
   }
 
   if (!currentProject) {
+    if (error) return (
+      <div className="p-8 space-y-3">
+        <p className="text-red-400 text-sm">{error}</p>
+        <button onClick={() => id && fetchProject(id)}
+          className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm">
+          再試行
+        </button>
+      </div>
+    )
     return <div className="p-8 text-gray-500">読み込み中...</div>
   }
 
@@ -83,7 +92,7 @@ export default function ProjectDetailPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-800 bg-gray-900/50">
+      <div className="flex items-center gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 border-b border-gray-800 bg-gray-900/50 flex-wrap">
         <button onClick={() => navigate('/projects')} className="text-gray-400 hover:text-white">
           <ArrowLeft size={20} />
         </button>
@@ -134,7 +143,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-3 md:p-6">
         {tab === 'input' && (
           <div className="max-w-3xl space-y-4">
             {/* URL fetch */}
@@ -202,7 +211,7 @@ export default function ProjectDetailPage() {
                 構造分析後に「スライド生成」を実行してください
               </div>
             ) : (
-              <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {slides
                   .slice()
                   .sort((a, b) => a.order - b.order)
