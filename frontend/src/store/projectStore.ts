@@ -39,8 +39,12 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       const res = await api.getProject(id)
       set({ currentProject: res.data, loading: false })
-    } catch {
-      set({ error: 'プロジェクトの取得に失敗しました', loading: false })
+    } catch (e: unknown) {
+      const axiosErr = e as { response?: { status: number; data?: unknown }; message?: string }
+      const detail = axiosErr?.response
+        ? `HTTP ${axiosErr.response.status}: ${JSON.stringify(axiosErr.response.data)}`
+        : axiosErr?.message || '不明なエラー'
+      set({ error: `プロジェクトの取得に失敗しました — ${detail}`, loading: false })
     }
   },
 
