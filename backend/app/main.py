@@ -1,4 +1,3 @@
-import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
@@ -22,7 +21,6 @@ app.include_router(images.router)
 
 @app.on_event("startup")
 async def startup():
-    os.makedirs("/data", exist_ok=True)
     await init_db()
 
 
