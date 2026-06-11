@@ -12,7 +12,7 @@ type Tab = 'input' | 'structure' | 'slides'
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { currentProject, loading, error, fetchProject, updateContent, analyzeContent, generateSlides } =
+  const { currentProject, loading, error, fetchProject, updateContent, analyzeContent, generateSlides, clearError } =
     useProjectStore()
   const [tab, setTab] = useState<Tab>('input')
   const [content, setContent] = useState('')
@@ -59,9 +59,13 @@ export default function ProjectDetailPage() {
 
   const handleAnalyze = async () => {
     if (!id) return
-    await handleSaveContent()
-    await analyzeContent(id)
-    setTab('structure')
+    try {
+      await handleSaveContent()
+      await analyzeContent(id)
+      setTab('structure')
+    } catch (e) {
+      alert(`構造分析エラー: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   const handleGenerateSlides = async () => {
@@ -141,6 +145,14 @@ export default function ProjectDetailPage() {
           </button>
         ))}
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="px-4 py-2 bg-red-900/40 border-b border-red-700 text-red-300 text-sm flex justify-between">
+          <span>{error}</span>
+          <button onClick={clearError} className="text-red-400 hover:text-white ml-4">✕</button>
+        </div>
+      )}
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-3 md:p-6">
