@@ -13,10 +13,15 @@ export default function ProjectsPage() {
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return
-    const p = await createProject(newTitle.trim())
-    setNewTitle('')
-    setCreating(false)
-    navigate(`/projects/${p.id}`)
+    try {
+      const p = await createProject(newTitle.trim())
+      if (!p?.id) throw new Error(`IDが取得できませんでした: ${JSON.stringify(p)}`)
+      setNewTitle('')
+      setCreating(false)
+      navigate(`/projects/${p.id}`)
+    } catch (e) {
+      alert(`プロジェクト作成エラー: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   return (
