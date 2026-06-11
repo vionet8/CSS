@@ -5,7 +5,7 @@ import { useProjectStore } from '../store/projectStore'
 
 export default function ProjectsPage() {
   const navigate = useNavigate()
-  const { projects, loading, fetchProjects, createProject, deleteProject } = useProjectStore()
+  const { projects, loading, error, fetchProjects, createProject, deleteProject } = useProjectStore()
   const [creating, setCreating] = useState(false)
   const [newTitle, setNewTitle] = useState('')
 
@@ -49,6 +49,13 @@ export default function ProjectsPage() {
           />
           <button onClick={handleCreate} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm">作成</button>
           <button onClick={() => setCreating(false)} className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-sm">キャンセル</button>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
+          {error}
+          <button onClick={fetchProjects} className="ml-3 underline">再試行</button>
         </div>
       )}
 
