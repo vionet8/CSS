@@ -4,7 +4,7 @@ import json
 import re
 
 
-client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY.strip())
 
 
 async def extract_logic_structure(content: str) -> dict:
