@@ -13,6 +13,20 @@ from app.services.ai_service import extract_logic_structure, generate_slides_fro
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
+def project_to_dict(p: Project) -> dict:
+    return {
+        "id": p.id,
+        "title": p.title,
+        "description": p.description,
+        "raw_content": p.raw_content,
+        "logic_structure": p.logic_structure,
+        "slides": p.slides,
+        "assets": p.assets,
+        "created_at": p.created_at,
+        "updated_at": p.updated_at,
+    }
+
+
 class ProjectCreate(BaseModel):
     title: str
     description: str = ""
@@ -62,7 +76,7 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
     db.add(project)
     await db.commit()
     await db.refresh(project)
-    return project
+    return project_to_dict(project)
 
 
 @router.get("/{project_id}")
@@ -71,7 +85,7 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return project
+    return project_to_dict(project)
 
 
 @router.patch("/{project_id}")
@@ -87,7 +101,7 @@ async def update_project(project_id: str, data: ProjectUpdate, db: AsyncSession 
 
     await db.commit()
     await db.refresh(project)
-    return project
+    return project_to_dict(project)
 
 
 @router.delete("/{project_id}")
