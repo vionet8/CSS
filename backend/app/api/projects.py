@@ -124,7 +124,10 @@ async def analyze_content(project_id: str, db: AsyncSession = Depends(get_db)):
     if not project.raw_content:
         raise HTTPException(status_code=400, detail="No content to analyze")
 
-    structure = await extract_logic_structure(project.raw_content)
+    try:
+        structure = await extract_logic_structure(project.raw_content)
+    except (ValueError, Exception) as e:
+        raise HTTPException(status_code=500, detail=str(e))
     project.logic_structure = structure
     project.updated_at = datetime.now(timezone.utc)
     await db.commit()

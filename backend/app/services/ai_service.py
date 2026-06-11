@@ -2,6 +2,9 @@ import anthropic
 from app.core.config import settings
 import json
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY.strip())
@@ -38,11 +41,17 @@ childrenには同じ構造のノードを入れてください。"""
     )
 
     raw = message.content[0].text.strip()
-    # JSONブロックがあれば抽出
+    logger.info("extract_logic_structure raw response (first 500): %s", raw[:500])
+    # コードブロック除去
+    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
     match = re.search(r"\{[\s\S]*\}", raw)
     if match:
         raw = match.group(0)
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error("JSON parse error: %s\nRaw: %s", e, raw[:1000])
+        raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
 
 
 async def generate_slides_from_structure(structure: dict) -> list[dict]:
@@ -102,10 +111,15 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
     )
 
     raw = message.content[0].text.strip()
+    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
     match = re.search(r"\[[\s\S]*\]", raw)
     if match:
         raw = match.group(0)
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.error("JSON parse error (slides): %s\nRaw: %s", e, raw[:1000])
+        raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
 
 
 async def improve_slide(slide: dict, instruction: str) -> dict:
