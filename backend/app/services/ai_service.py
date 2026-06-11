@@ -3,6 +3,7 @@ from app.core.config import settings
 import json
 import re
 import logging
+from json_repair import repair_json
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,13 @@ childrenには同じ構造のノードを入れてください。"""
         raw = match.group(0)
     try:
         return json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.error("JSON parse error: %s\nRaw: %s", e, raw[:1000])
-        raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
+    except json.JSONDecodeError:
+        repaired = repair_json(raw)
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError as e:
+            logger.error("JSON parse error after repair: %s\nRaw: %s", e, raw[:1000])
+            raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
 
 
 async def generate_slides_from_structure(structure: dict) -> list[dict]:
@@ -117,9 +122,13 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
         raw = match.group(0)
     try:
         return json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.error("JSON parse error (slides): %s\nRaw: %s", e, raw[:1000])
-        raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
+    except json.JSONDecodeError:
+        repaired = repair_json(raw)
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError as e:
+            logger.error("JSON parse error (slides) after repair: %s\nRaw: %s", e, raw[:1000])
+            raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
 
 
 async def improve_slide(slide: dict, instruction: str) -> dict:
