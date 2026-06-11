@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 120000,
 })
 
@@ -37,7 +37,8 @@ export const uploadImage = (file: File) => {
   fd.append('file', file)
   return api.post('/images/upload', fd)
 }
-export const getImageUrl = (filename: string) => `/api/images/file/${filename}`
+export const getImageUrl = (filename: string) =>
+  `${import.meta.env.VITE_API_URL || '/api'}/images/file/${filename}`
 export const resizeImage = (filename: string, width: number, height: number) =>
   api.post('/images/resize', { filename, width, height })
 export const cropImage = (filename: string, x: number, y: number, width: number, height: number) =>
