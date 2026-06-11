@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Pencil, Sparkles, Check, X, LayoutTemplate, User } from 'lucide-react'
+import { Pencil, Sparkles, Check, X, LayoutTemplate, User, Move } from 'lucide-react'
 import type { Slide, TemplateType, CharacterEmotion } from '../types'
 import { SlideRenderer, TEMPLATE_LABELS } from './templates'
+import CharacterPositionEditor from './CharacterPositionEditor'
 import * as api from '../api/client'
 
 interface Props {
@@ -30,6 +31,7 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
   const [improving, setImproving] = useState(false)
   const [changingTemplate, setChangingTemplate] = useState(false)
   const [changingEmotion, setChangingEmotion] = useState(false)
+  const [positionEditing, setPositionEditing] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [draft, setDraft] = useState({ title: slide.title, body: slide.body })
   const [busy, setBusy] = useState(false)
@@ -38,6 +40,21 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
   const charImageUrl = character
     ? api.getCharacterImageUrl(character, emotion)
     : null
+
+  const charX     = slide.character_x     ?? 68
+  const charY     = slide.character_y     ?? 0
+  const charScale = slide.character_scale ?? 0.55
+
+  const savePosition = async (x: number, y: number, s: number) => {
+    setBusy(true)
+    try {
+      const res = await api.updateSlide(projectId, slide.id, { character_x: x, character_y: y, character_scale: s })
+      onUpdate(res.data.slide)
+      setPositionEditing(false)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const saveEdit = async () => {
     setBusy(true)
@@ -108,11 +125,17 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
         ) : (
           <div className="relative">
             <SlideRenderer slide={slide} />
-            {charImageUrl && (
+            {charImageUrl && !positionEditing && (
               <img
                 src={charImageUrl}
                 alt={`${character} ${emotion}`}
-                className="absolute bottom-0 right-1 h-[52%] object-contain pointer-events-none drop-shadow-lg"
+                className="absolute pointer-events-none drop-shadow-lg"
+                style={{
+                  bottom: `${charY}%`,
+                  left:   `${charX}%`,
+                  height: `${charScale * 100}%`,
+                  objectFit: 'contain',
+                }}
               />
             )}
           </div>
@@ -156,6 +179,12 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
                 <User size={12} /> 表情
               </button>
             )}
+            {character && (
+              <button onClick={() => { setPositionEditing(true); setChangingEmotion(false); setChangingTemplate(false) }}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200">
+                <Move size={12} /> 配置
+              </button>
+            )}
             <button onClick={() => setImproving((v) => !v)}
               className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300">
               <Sparkles size={12} /> AI改善
@@ -197,6 +226,18 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Position editor */}
+      {positionEditing && character && (
+        <div className="px-3 pb-3 border-t border-gray-700 pt-3">
+          <CharacterPositionEditor
+            slide={slide}
+            character={character}
+            onSave={savePosition}
+            onCancel={() => setPositionEditing(false)}
+          />
         </div>
       )}
 

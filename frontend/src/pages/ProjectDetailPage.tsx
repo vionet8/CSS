@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload } from 'lucide-react'
+import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2 } from 'lucide-react'
+import FullscreenPresenter from '../components/FullscreenPresenter'
 import { useProjectStore } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
 import SlideCard from '../components/SlideCard'
@@ -23,6 +24,7 @@ export default function ProjectDetailPage() {
   const [slides, setSlides] = useState<Slide[]>([])
   const [characters, setCharacters] = useState<CharacterMeta[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<string>('')
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
     if (id) fetchProject(id)
@@ -223,40 +225,35 @@ export default function ProjectDetailPage() {
 
         {tab === 'slides' && (
           <div className="space-y-4">
-            {/* Character selector */}
-            {slides.length > 0 && characters.length > 0 && (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-xs text-gray-400">キャラクター:</span>
+            {/* Toolbar */}
+            {slides.length > 0 && (
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  {characters.length > 0 && (
+                    <>
+                      <span className="text-xs text-gray-400">キャラクター:</span>
+                      <button
+                        onClick={() => setSelectedCharacter('')}
+                        className={`px-3 py-1 rounded-full text-xs transition-colors ${selectedCharacter === '' ? 'bg-gray-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}
+                      >なし</button>
+                      {characters.map(c => (
+                        <button key={c.id} onClick={() => setSelectedCharacter(c.id)}
+                          className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs transition-colors ${selectedCharacter === c.id ? 'bg-brand-600 text-white' : 'bg-gray-800 text-gray-400 hover:bg-gray-700'}`}>
+                          {selectedCharacter === c.id && (
+                            <img src={api.getCharacterImageUrl(c.id, 'normal')} className="h-5 w-5 object-contain" alt={c.label} />
+                          )}
+                          {c.label}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
                 <button
-                  onClick={() => setSelectedCharacter('')}
-                  className={`px-3 py-1 rounded-full text-xs transition-colors ${
-                    selectedCharacter === ''
-                      ? 'bg-gray-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
+                  onClick={() => setFullscreen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm"
                 >
-                  なし
+                  <Maximize2 size={14} /> 全画面プレゼン
                 </button>
-                {characters.map(c => (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCharacter(c.id)}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs transition-colors ${
-                      selectedCharacter === c.id
-                        ? 'bg-brand-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    {selectedCharacter === c.id && (
-                      <img
-                        src={api.getCharacterImageUrl(c.id, 'normal')}
-                        className="h-5 w-5 object-contain"
-                        alt={c.label}
-                      />
-                    )}
-                    {c.label}
-                  </button>
-                ))}
               </div>
             )}
 
@@ -285,6 +282,14 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {fullscreen && slides.length > 0 && (
+        <FullscreenPresenter
+          slides={slides}
+          character={selectedCharacter || undefined}
+          onClose={() => setFullscreen(false)}
+        />
+      )}
     </div>
   )
 }

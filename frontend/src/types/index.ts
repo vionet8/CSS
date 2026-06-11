@@ -81,6 +81,9 @@ export interface Slide {
   character?: string
   character_emotion?: CharacterEmotion
   character_position?: 'left' | 'right'
+  character_x?: number
+  character_y?: number
+  character_scale?: number
 }
 
 export interface ImageInfo {
