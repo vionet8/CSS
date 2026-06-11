@@ -4,7 +4,7 @@ import json
 import re
 
 
-client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
 async def extract_logic_structure(content: str) -> dict:
@@ -31,7 +31,7 @@ async def extract_logic_structure(content: str) -> dict:
 typeは以下から選択: 現状, 問題, 原因, 解決策, 根拠, 具体例, 結論
 childrenには同じ構造のノードを入れてください。"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
@@ -95,7 +95,7 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
 - accent_color はコンテンツのトーンに合わせて選ぶ（例: 技術→#4f6ef7, 自然→#10b981, 警告→#ef4444）
 - items の accent フィールドは3col-categoryのカテゴリ振り分けに使用"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=4096,
         messages=[{"role": "user", "content": prompt}],
@@ -119,7 +119,7 @@ async def improve_slide(slide: dict, instruction: str) -> dict:
 改善後のスライドをJSON形式で返してください（コードブロックなし、JSONのみ）。
 元のフィールド構造を維持してください。"""
 
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
         messages=[{"role": "user", "content": prompt}],
