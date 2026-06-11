@@ -7,6 +7,8 @@ import SlideCard from '../components/SlideCard'
 import type { Slide } from '../types'
 import * as api from '../api/client'
 
+interface CharacterMeta { id: string; label: string; emotions: string[] }
+
 type Tab = 'input' | 'structure' | 'slides'
 
 export default function ProjectDetailPage() {
@@ -19,9 +21,12 @@ export default function ProjectDetailPage() {
   const [urlInput, setUrlInput] = useState('')
   const [urlLoading, setUrlLoading] = useState(false)
   const [slides, setSlides] = useState<Slide[]>([])
+  const [characters, setCharacters] = useState<CharacterMeta[]>([])
+  const [selectedCharacter, setSelectedCharacter] = useState<string>('')
 
   useEffect(() => {
     if (id) fetchProject(id)
+    api.getCharacters().then(r => setCharacters(r.data)).catch(() => {})
   }, [id, fetchProject])
 
   useEffect(() => {
@@ -217,7 +222,44 @@ export default function ProjectDetailPage() {
         )}
 
         {tab === 'slides' && (
-          <div>
+          <div className="space-y-4">
+            {/* Character selector */}
+            {slides.length > 0 && characters.length > 0 && (
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-gray-400">キャラクター:</span>
+                <button
+                  onClick={() => setSelectedCharacter('')}
+                  className={`px-3 py-1 rounded-full text-xs transition-colors ${
+                    selectedCharacter === ''
+                      ? 'bg-gray-600 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  なし
+                </button>
+                {characters.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedCharacter(c.id)}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs transition-colors ${
+                      selectedCharacter === c.id
+                        ? 'bg-brand-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    {selectedCharacter === c.id && (
+                      <img
+                        src={api.getCharacterImageUrl(c.id, 'normal')}
+                        className="h-5 w-5 object-contain"
+                        alt={c.label}
+                      />
+                    )}
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {slides.length === 0 ? (
               <div className="text-gray-500 text-sm py-12 text-center">
                 構造分析後に「スライド生成」を実行してください
@@ -232,6 +274,7 @@ export default function ProjectDetailPage() {
                       key={slide.id}
                       slide={slide}
                       projectId={currentProject.id}
+                      character={selectedCharacter || undefined}
                       onUpdate={(updated) =>
                         setSlides((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
                       }

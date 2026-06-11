@@ -98,7 +98,8 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
     ],
     "speaker_notes": "発表者ノート",
     "image_hint": "推奨画像の説明（英語）",
-    "source_node_id": "対応するノードID"
+    "source_node_id": "対応するノードID",
+    "character_emotion": "normal|happy|very_happy|surprised|sad|crying|angry|thinking|smug|embarrassed|explaining"
   }}
 ]
 
@@ -107,7 +108,8 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
 - 最後はhero-headlineかsplit-darkのまとめスライド
 - items は flow/3col/4grid/numbered/mvv/hub系のテンプレートで必須（3〜5個推奨）
 - accent_color はコンテンツのトーンに合わせて選ぶ（例: 技術→#4f6ef7, 自然→#10b981, 警告→#ef4444）
-- items の accent フィールドは3col-categoryのカテゴリ振り分けに使用"""
+- items の accent フィールドは3col-categoryのカテゴリ振り分けに使用
+- character_emotion はスライドの感情トーンに合わせて選ぶ（タイトル→normal, 良いニュース→happy, 問題提起→sad, 驚き→surprised, 結論→smug, 解説→explaining）"""
 
     message = await client.messages.create(
         model="claude-sonnet-4-6",

@@ -1,0 +1,46 @@
+{
+  "normal": {
+    "label": "通常",
+    "file": "metan_normal.png"
+  },
+  "happy": {
+    "label": "喜び",
+    "file": "metan_happy.png"
+  },
+  "very_happy": {
+    "label": "大喜び",
+    "file": "metan_very_happy.png"
+  },
+  "surprised": {
+    "label": "驚き",
+    "file": "metan_surprised.png"
+  },
+  "sad": {
+    "label": "悲しみ",
+    "file": "metan_sad.png"
+  },
+  "crying": {
+    "label": "泣き",
+    "file": "metan_crying.png"
+  },
+  "angry": {
+    "label": "怒り",
+    "file": "metan_angry.png"
+  },
+  "thinking": {
+    "label": "考え中",
+    "file": "metan_thinking.png"
+  },
+  "smug": {
+    "label": "ドヤ顔",
+    "file": "metan_smug.png"
+  },
+  "embarrassed": {
+    "label": "恥ずかし",
+    "file": "metan_embarrassed.png"
+  },
+  "explaining": {
+    "label": "説明",
+    "file": "metan_explaining.png"
+  }
+}

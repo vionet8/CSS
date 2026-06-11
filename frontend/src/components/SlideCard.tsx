@@ -1,22 +1,43 @@
 import { useState } from 'react'
-import { Pencil, Sparkles, Check, X, LayoutTemplate } from 'lucide-react'
-import type { Slide, TemplateType } from '../types'
+import { Pencil, Sparkles, Check, X, LayoutTemplate, User } from 'lucide-react'
+import type { Slide, TemplateType, CharacterEmotion } from '../types'
 import { SlideRenderer, TEMPLATE_LABELS } from './templates'
 import * as api from '../api/client'
 
 interface Props {
   slide: Slide
   projectId: string
+  character?: string
   onUpdate: (slide: Slide) => void
 }
 
-export default function SlideCard({ slide, projectId, onUpdate }: Props) {
+const EMOTIONS: { value: CharacterEmotion; label: string }[] = [
+  { value: 'normal',      label: '通常' },
+  { value: 'happy',       label: '喜び' },
+  { value: 'very_happy',  label: '大喜び' },
+  { value: 'surprised',   label: '驚き' },
+  { value: 'sad',         label: '悲しみ' },
+  { value: 'crying',      label: '泣き' },
+  { value: 'angry',       label: '怒り' },
+  { value: 'thinking',    label: '考え中' },
+  { value: 'smug',        label: 'ドヤ顔' },
+  { value: 'embarrassed', label: '恥ずかし' },
+  { value: 'explaining',  label: '説明' },
+]
+
+export default function SlideCard({ slide, projectId, character, onUpdate }: Props) {
   const [editing, setEditing] = useState(false)
   const [improving, setImproving] = useState(false)
   const [changingTemplate, setChangingTemplate] = useState(false)
+  const [changingEmotion, setChangingEmotion] = useState(false)
   const [instruction, setInstruction] = useState('')
   const [draft, setDraft] = useState({ title: slide.title, body: slide.body })
   const [busy, setBusy] = useState(false)
+
+  const emotion = slide.character_emotion || 'normal'
+  const charImageUrl = character
+    ? api.getCharacterImageUrl(character, emotion)
+    : null
 
   const saveEdit = async () => {
     setBusy(true)
@@ -53,6 +74,17 @@ export default function SlideCard({ slide, projectId, onUpdate }: Props) {
     }
   }
 
+  const changeEmotion = async (e: CharacterEmotion) => {
+    setBusy(true)
+    try {
+      const res = await api.updateSlide(projectId, slide.id, { character_emotion: e })
+      onUpdate(res.data.slide)
+      setChangingEmotion(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="rounded-xl border border-gray-700 overflow-hidden bg-gray-900">
       {/* Slide preview */}
@@ -74,17 +106,31 @@ export default function SlideCard({ slide, projectId, onUpdate }: Props) {
             />
           </div>
         ) : (
-          <SlideRenderer slide={slide} />
+          <div className="relative">
+            <SlideRenderer slide={slide} />
+            {charImageUrl && (
+              <img
+                src={charImageUrl}
+                alt={`${character} ${emotion}`}
+                className="absolute bottom-0 right-1 h-[52%] object-contain pointer-events-none drop-shadow-lg"
+              />
+            )}
+          </div>
         )}
       </div>
 
-      {/* Template label */}
-      <div className="px-3 py-1 bg-gray-800/50 text-xs text-gray-500 border-t border-gray-700/50">
-        {TEMPLATE_LABELS[slide.template] || slide.template}
+      {/* Template + emotion label */}
+      <div className="px-3 py-1 bg-gray-800/50 text-xs text-gray-500 border-t border-gray-700/50 flex justify-between">
+        <span>{TEMPLATE_LABELS[slide.template] || slide.template}</span>
+        {character && (
+          <span className="text-gray-600">
+            {EMOTIONS.find(e => e.value === emotion)?.label || emotion}
+          </span>
+        )}
       </div>
 
       {/* Actions */}
-      <div className="px-3 py-2 flex items-center gap-2 border-t border-gray-700">
+      <div className="px-3 py-2 flex items-center gap-2 border-t border-gray-700 flex-wrap">
         {editing ? (
           <>
             <button onClick={saveEdit} disabled={busy} className="flex items-center gap-1 text-xs text-green-400 hover:text-green-300">
@@ -104,6 +150,12 @@ export default function SlideCard({ slide, projectId, onUpdate }: Props) {
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200">
               <LayoutTemplate size={12} /> テンプレ
             </button>
+            {character && (
+              <button onClick={() => setChangingEmotion((v) => !v)}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-200">
+                <User size={12} /> 表情
+              </button>
+            )}
             <button onClick={() => setImproving((v) => !v)}
               className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300">
               <Sparkles size={12} /> AI改善
@@ -111,6 +163,24 @@ export default function SlideCard({ slide, projectId, onUpdate }: Props) {
           </>
         )}
       </div>
+
+      {/* Emotion picker */}
+      {changingEmotion && (
+        <div className="px-3 pb-3 border-t border-gray-700 pt-2">
+          <div className="grid grid-cols-4 gap-1">
+            {EMOTIONS.map(({ value, label }) => (
+              <button key={value} onClick={() => changeEmotion(value)} disabled={busy}
+                className={`px-2 py-1 rounded text-xs transition-colors ${
+                  emotion === value
+                    ? 'bg-brand-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Template picker */}
       {changingTemplate && (

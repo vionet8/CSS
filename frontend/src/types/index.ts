@@ -59,6 +59,11 @@ export interface SlideItem {
   accent?: string
 }
 
+export type CharacterEmotion =
+  | 'normal' | 'happy' | 'very_happy' | 'surprised'
+  | 'sad' | 'crying' | 'angry' | 'thinking'
+  | 'smug' | 'embarrassed' | 'explaining'
+
 export interface Slide {
   id: string
   order: number
@@ -73,6 +78,9 @@ export interface Slide {
   image_hint?: string
   source_node_id?: string
   image_filename?: string
+  character?: string
+  character_emotion?: CharacterEmotion
+  character_position?: 'left' | 'right'
 }
 
 export interface ImageInfo {

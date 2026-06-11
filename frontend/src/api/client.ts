@@ -31,6 +31,12 @@ export const uploadPdf = (file: File) => {
   return api.post('/content/upload-pdf', fd)
 }
 
+// Characters
+export const getCharacters = () => api.get('/characters/')
+export const getCharacterEmotions = (name: string) => api.get(`/characters/${name}/emotions`)
+export const getCharacterImageUrl = (character: string, emotion: string) =>
+  `${import.meta.env.VITE_API_URL || '/api'}/static/characters/${character}_${emotion}.png`
+
 // Images
 export const uploadImage = (file: File) => {
   const fd = new FormData()

@@ -1,0 +1,46 @@
+{
+  "normal": {
+    "label": "通常",
+    "file": "zundamon_normal.png"
+  },
+  "happy": {
+    "label": "喜び",
+    "file": "zundamon_happy.png"
+  },
+  "very_happy": {
+    "label": "大喜び",
+    "file": "zundamon_very_happy.png"
+  },
+  "surprised": {
+    "label": "驚き",
+    "file": "zundamon_surprised.png"
+  },
+  "sad": {
+    "label": "悲しみ",
+    "file": "zundamon_sad.png"
+  },
+  "crying": {
+    "label": "泣き",
+    "file": "zundamon_crying.png"
+  },
+  "angry": {
+    "label": "怒り",
+    "file": "zundamon_angry.png"
+  },
+  "thinking": {
+    "label": "考え中",
+    "file": "zundamon_thinking.png"
+  },
+  "smug": {
+    "label": "ドヤ顔",
+    "file": "zundamon_smug.png"
+  },
+  "embarrassed": {
+    "label": "恥ずかし",
+    "file": "zundamon_embarrassed.png"
+  },
+  "explaining": {
+    "label": "説明",
+    "file": "zundamon_explaining.png"
+  }
+}
