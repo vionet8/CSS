@@ -68,6 +68,7 @@ export interface Slide {
   id: string
   order: number
   type: 'title' | 'content' | 'section' | 'conclusion'
+  phase?: 'jo' | 'ha' | 'kyu'
   template: TemplateType
   title: string
   subtitle?: string

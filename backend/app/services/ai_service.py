@@ -65,51 +65,51 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
 論理構造:
 {json.dumps(structure, ensure_ascii=False, indent=2)}
 
-利用可能なテンプレートと使い分け:
-- hero-headline: タイトル・大見出し・キャッチコピー
-- split-dark: 左ダーク背景＋右箇条書き（セクション区切り）
-- fullbleed-overlay: インパクトある背景＋テキストオーバーレイ
-- 2col-diagram: 左説明＋右に要素リスト（説明＋要点）
-- 3col-icons: 3つの特徴・メリットを横並び
-- 4grid-icons: 4つの要素を2×2グリッド
-- flow-vertical: 縦フロー（プロセス・ステップ・因果関係）
-- flow-horizontal: 横フロー（前後の流れ・変化）
-- hub-spoke: 中心概念＋周辺要素（エコシステム・関係図）
-- mvv-stack: Mission/Vision/Value等の縦積み
-- value-list: 価値観・原則のリスト（左に大きなラベル）
-- numbered-list: 番号付き手順・ポイント（01/02/03スタイル）
-- comparison-table: ◎△×の比較表
-- 3col-category: 3カテゴリに分けた箇条書き
-- logo-grid: 実績・パートナーのロゴ一覧
+## スライドは「序・破・急」の3パターンで統一感を出してください
 
-以下のJSON形式でスライドリストを出力してください（コードブロックなし、JSONのみ）:
+### 序（Jo）- 導入・文脈・前提を示す
+静かで余白の多いレイアウト。テキスト中心。
+使えるテンプレート: hero-headline, split-dark, 2col-diagram
+
+### 破（Ha）- 問題・分析・展開・根拠を深掘りする
+構造的・情報密度高め。フローや数字で見せる。
+使えるテンプレート: flow-vertical, flow-horizontal, numbered-list, 3col-icons, 4grid-icons
+
+### 急（Kyū）- 解決・結論・インパクトを打ち出す
+大胆・全画面・図解。「だから何か」を強く示す。
+使えるテンプレート: hub-spoke, fullbleed-overlay, mvv-stack, 3col-category
+
+## 各スライドに必ず「phase」フィールドで jo/ha/kyu のどれかを指定してください
+
+以下のJSON形式で出力（コードブロックなし、JSONのみ）:
 [
   {{
     "id": "slide_1",
     "order": 1,
     "type": "title|content|section|conclusion",
-    "template": "上記テンプレート名から最適なものを選択",
+    "phase": "jo|ha|kyu",
+    "template": "phaseに対応するテンプレートから選択",
     "title": "スライドタイトル",
     "subtitle": "サブタイトルまたはセクションラベル",
     "body": "本文テキスト（箇条書きは\\nで区切る）",
-    "accent_color": "#16進数カラー（コンテンツに合った色）",
+    "accent_color": "#16進数カラー（コンテンツ全体で統一した1色を使い続ける）",
     "items": [
       {{"title": "項目タイトル", "body": "項目説明", "icon_hint": "アイコンの説明（英語）", "accent": "カテゴリ名"}}
     ],
     "speaker_notes": "発表者ノート",
-    "image_hint": "推奨画像の説明（英語）",
     "source_node_id": "対応するノードID",
     "character_emotion": "normal|happy|very_happy|surprised|sad|crying|angry|thinking|smug|embarrassed|explaining"
   }}
 ]
 
 ルール:
-- 最初はhero-headlineのタイトルスライド
-- 最後はhero-headlineかsplit-darkのまとめスライド
-- items は flow/3col/4grid/numbered/mvv/hub系のテンプレートで必須（3〜5個推奨）
-- accent_color はコンテンツのトーンに合わせて選ぶ（例: 技術→#4f6ef7, 自然→#10b981, 警告→#ef4444）
+- 最初のスライドは phase=jo, template=hero-headline（タイトル）
+- 最後のスライドは phase=kyu（まとめ・結論）
+- コンテンツの流れに合わせて jo→ha→kyu の順で自然に推移させる
+- accent_color はコンテンツ全体で1色に統一する（途中で変えない）
+- items は flow/3col/4grid/numbered/mvv/hub/3col-category 系のテンプレートで必須（3〜5個）
 - items の accent フィールドは3col-categoryのカテゴリ振り分けに使用
-- character_emotion はスライドの感情トーンに合わせて選ぶ（タイトル→normal, 良いニュース→happy, 問題提起→sad, 驚き→surprised, 結論→smug, 解説→explaining）"""
+- character_emotion はスライドの雰囲気に合わせて選ぶ（jo→explaining/normal, ha→thinking/surprised/sad, kyu→smug/happy）"""
 
     message = await client.messages.create(
         model="claude-sonnet-4-6",
