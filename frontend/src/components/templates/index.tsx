@@ -1,3 +1,4 @@
+import { useRef, useState, useEffect } from 'react'
 import type { Slide, TemplateType } from '../../types'
 import HeroHeadline from './HeroHeadline'
 import SplitDark from './SplitDark'
@@ -33,12 +34,48 @@ const TEMPLATE_MAP: Record<TemplateType, React.ComponentType<{ slide: Slide }>> 
   'logo-grid': LogoGrid,
 }
 
+// Internal reference resolution. All templates are designed at this size.
+const REF_W = 960
+const REF_H = 540
+
 export function SlideRenderer({ slide }: { slide: Slide }) {
+  const outerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+
+  useEffect(() => {
+    const el = outerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const w = entries[0].contentRect.width
+      setScale(w / REF_W)
+    })
+    obs.observe(el)
+    // Initial measurement
+    setScale(el.getBoundingClientRect().width / REF_W)
+    return () => obs.disconnect()
+  }, [])
+
   const template = slide.template || 'hero-headline'
   const Component = TEMPLATE_MAP[template] || HeroHeadline
+
   return (
-    <div className="w-full" style={{ aspectRatio: '16/9', position: 'relative', overflow: 'hidden' }}>
-      <Component slide={slide} />
+    <div
+      ref={outerRef}
+      style={{ aspectRatio: '16/9', position: 'relative', overflow: 'hidden' }}
+    >
+      <div
+        style={{
+          width: REF_W,
+          height: REF_H,
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          transformOrigin: 'top left',
+          transform: `scale(${scale})`,
+        }}
+      >
+        <Component slide={slide} />
+      </div>
     </div>
   )
 }
