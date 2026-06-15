@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, FolderOpen, Image, BookOpen, Menu, X } from 'lucide-react'
+import { LayoutDashboard, FolderOpen, Image, BookOpen, Menu, X, Film } from 'lucide-react'
 
 const navItems = [
   { to: '/', label: 'ホーム', icon: LayoutDashboard, end: true },
   { to: '/projects', label: 'プロジェクト', icon: FolderOpen },
   { to: '/images', label: '画像管理', icon: Image },
+  { to: '/video', label: '動画', icon: Film },
   { to: '/docs', label: '使い方', icon: BookOpen },
 ]
 

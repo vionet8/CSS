@@ -51,3 +51,28 @@ export const cropImage = (filename: string, x: number, y: number, width: number,
   api.post('/images/crop', { filename, x, y, width, height })
 export const splitImage = (filename: string, count: number) =>
   api.post('/images/split', { filename, count })
+
+// Video
+export const getVoicevoxStatus = () => api.get('/video/voicevox/status')
+export const exportProjectVideo = (
+  projectId: string,
+  opts: { character?: string; slide_duration?: number; resolution?: string; with_narration?: boolean }
+) => api.post(`/video/projects/${projectId}/export`, opts, { timeout: 600000 })
+export const uploadVideo = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/video/upload', fd)
+}
+export const getVideoUrl = (filename: string) =>
+  `${import.meta.env.VITE_API_URL || '/api'}/video/file/${filename}`
+export const trimVideo = (filename: string, start: number, end: number) =>
+  api.post('/video/trim', { filename, start, end })
+export const concatVideos = (filenames: string[]) =>
+  api.post('/video/concat', { filenames })
+export const uploadAudio = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/video/audio/upload', fd)
+}
+export const addAudioToVideo = (video_filename: string, audio_filename: string) =>
+  api.post('/video/add-audio', { video_filename, audio_filename })
