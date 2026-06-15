@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "../uploads"
     CORS_ORIGINS_STR: str = "http://localhost:5173"
     FRONTEND_URL: str = ""
+    VOICEVOX_URL: str = "http://localhost:50021"
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

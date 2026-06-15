@@ -4,6 +4,7 @@ import type { Slide } from '../types'
 import { SlideRenderer } from './templates'
 import AnimatedCharacter from './AnimatedCharacter'
 import * as api from '../api/client'
+import { synthesizeSpeech } from '../api/client'
 
 interface Props {
   slides: Slide[]
@@ -56,28 +57,11 @@ export default function FullscreenPresenter({ slides, initialIndex = 0, characte
     const audio = new Audio()
     audioRef.current = audio
 
-    const speaker = character === 'metan' ? 2 : 3
-    const apiBase = import.meta.env.VITE_API_URL || '/api'
-
-    // Use VOICEVOX directly from frontend (needs VOICEVOX running)
     const play = async () => {
       try {
-        const qRes = await fetch(`http://localhost:50021/audio_query?text=${encodeURIComponent(notes)}&speaker=${speaker}`, {
-          method: 'POST',
-        })
-        if (!qRes.ok) { setSpeaking(false); return }
-        const query = await qRes.json()
-        query.speedScale = 1.1
-
-        const sRes = await fetch(`http://localhost:50021/synthesis?speaker=${speaker}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(query),
-        })
-        if (!sRes.ok) { setSpeaking(false); return }
-
-        const blob = await sRes.blob()
-        const url = URL.createObjectURL(blob)
+        const emotion = slide.character_emotion || 'normal'
+        const res = await synthesizeSpeech(notes, character, emotion)
+        const url = URL.createObjectURL(res.data as Blob)
         audio.src = url
         audio.onended = () => { setSpeaking(false); URL.revokeObjectURL(url) }
         audio.play().catch(() => setSpeaking(false))

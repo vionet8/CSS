@@ -1,8 +1,7 @@
 import httpx
 import wave
 from pathlib import Path
-
-VOICEVOX_URL = "http://localhost:50021"
+from app.core.config import settings
 
 # Speaker ID mapping: character -> emotion -> VOICEVOX speaker_id
 _SPEAKER_IDS: dict[str, dict[str, int]] = {
@@ -36,13 +35,38 @@ _SPEAKER_IDS: dict[str, dict[str, int]] = {
 _DEFAULT_SPEAKER = 3
 
 
+def _speaker_id(character: str, emotion: str) -> int:
+    return _SPEAKER_IDS.get(character, {}).get(emotion, _DEFAULT_SPEAKER)
+
+
 async def check_available() -> bool:
     try:
         async with httpx.AsyncClient(timeout=3) as client:
-            res = await client.get(f"{VOICEVOX_URL}/version")
+            res = await client.get(f"{settings.VOICEVOX_URL}/version")
             return res.status_code == 200
     except Exception:
         return False
+
+
+async def synthesize(text: str, character: str = "zundamon", emotion: str = "normal") -> bytes:
+    """Returns raw WAV bytes. Raises on failure."""
+    speaker_id = _speaker_id(character, emotion)
+    async with httpx.AsyncClient(timeout=60) as client:
+        q_res = await client.post(
+            f"{settings.VOICEVOX_URL}/audio_query",
+            params={"text": text, "speaker": speaker_id},
+        )
+        q_res.raise_for_status()
+        query = q_res.json()
+        query["speedScale"] = 1.1
+
+        s_res = await client.post(
+            f"{settings.VOICEVOX_URL}/synthesis",
+            params={"speaker": speaker_id},
+            json=query,
+        )
+        s_res.raise_for_status()
+        return s_res.content
 
 
 async def generate_audio(
@@ -51,28 +75,10 @@ async def generate_audio(
     emotion: str = "normal",
     output_path: Path = None,
 ) -> bool:
-    speaker_id = _SPEAKER_IDS.get(character, {}).get(emotion, _DEFAULT_SPEAKER)
     try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            res = await client.post(
-                f"{VOICEVOX_URL}/audio_query",
-                params={"text": text, "speaker": speaker_id},
-            )
-            if res.status_code != 200:
-                return False
-            query = res.json()
-            query["speedScale"] = 1.1
-
-            res2 = await client.post(
-                f"{VOICEVOX_URL}/synthesis",
-                params={"speaker": speaker_id},
-                json=query,
-            )
-            if res2.status_code != 200:
-                return False
-
-            output_path.write_bytes(res2.content)
-            return True
+        data = await synthesize(text, character, emotion)
+        output_path.write_bytes(data)
+        return True
     except Exception:
         return False
 

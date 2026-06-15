@@ -52,6 +52,11 @@ export const cropImage = (filename: string, x: number, y: number, width: number,
 export const splitImage = (filename: string, count: number) =>
   api.post('/images/split', { filename, count })
 
+// Voice (VOICEVOX proxy)
+export const getVoiceStatus = () => api.get('/voice/status')
+export const synthesizeSpeech = (text: string, character: string, emotion: string) =>
+  api.post('/voice/synthesize', { text, character, emotion }, { responseType: 'blob' })
+
 // Video
 export const getVoicevoxStatus = () => api.get('/video/voicevox/status')
 export const exportProjectVideo = (

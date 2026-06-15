@@ -4,7 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import projects, content, images, characters, video
+from app.api import projects, content, images, characters, video, voice
 
 app = FastAPI(title="Content Structure Studio API", version="0.1.0")
 
@@ -21,6 +21,7 @@ app.include_router(content.router)
 app.include_router(images.router)
 app.include_router(characters.router)
 app.include_router(video.router)
+app.include_router(voice.router)
 
 _static = Path(__file__).parent.parent / "static"
 if _static.exists():
