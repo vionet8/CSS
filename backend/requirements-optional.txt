@@ -1,0 +1,9 @@
+# Optional: PostgreSQL support (production)
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
+
+# Optional: PSD file import feature
+psd-tools==1.10.2
+
+# Optional: Video export feature
+opencv-python-headless==4.10.0.84
