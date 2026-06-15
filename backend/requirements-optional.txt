@@ -7,3 +7,7 @@ psd-tools==1.10.2
 
 # Optional: Video export feature
 opencv-python-headless==4.10.0.84
+
+# Optional: Screenshot + Vision analysis feature
+# After install: playwright install chromium
+playwright>=1.40.0

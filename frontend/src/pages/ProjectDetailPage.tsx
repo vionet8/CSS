@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2 } from 'lucide-react'
+import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2, Camera, Mic } from 'lucide-react'
 import FullscreenPresenter from '../components/FullscreenPresenter'
 import { useProjectStore } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
 import SlideCard from '../components/SlideCard'
 import type { Slide } from '../types'
 import * as api from '../api/client'
+import { screenshotUrl, generateNarration } from '../api/client'
 
 interface CharacterMeta { id: string; label: string; emotions: string[] }
 
@@ -21,6 +22,10 @@ export default function ProjectDetailPage() {
   const [content, setContent] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [urlLoading, setUrlLoading] = useState(false)
+  const [screenshotLoading, setScreenshotLoading] = useState(false)
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null)
+  const [narrationLoading, setNarrationLoading] = useState(false)
+  const [narration, setNarration] = useState<Record<string, unknown> | null>(null)
   const [slides, setSlides] = useState<Slide[]>([])
   const [characters, setCharacters] = useState<CharacterMeta[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<string>('')
@@ -54,6 +59,36 @@ export default function ProjectDetailPage() {
       setUrlInput('')
     } finally {
       setUrlLoading(false)
+    }
+  }
+
+  const handleScreenshot = async () => {
+    if (!urlInput.trim()) return
+    setScreenshotLoading(true)
+    try {
+      const res = await screenshotUrl(urlInput.trim())
+      const data = res.data
+      setScreenshotPreview(`data:image/png;base64,${data.screenshot_b64}`)
+      const combined = `# ${data.title}（スクリーンショット解析）\n\n${data.content}`
+      setContent((prev) => (prev ? prev + '\n\n---\n\n' + combined : combined))
+      setUrlInput('')
+    } catch (e) {
+      alert(`スクリーンショット失敗: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setScreenshotLoading(false)
+    }
+  }
+
+  const handleGenerateNarration = async () => {
+    if (!id) return
+    setNarrationLoading(true)
+    try {
+      const res = await generateNarration(id)
+      setNarration(res.data.narration)
+    } catch (e) {
+      alert(`セリフ生成エラー: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setNarrationLoading(false)
     }
   }
 
@@ -179,10 +214,19 @@ export default function ProjectDetailPage() {
               </div>
               <button
                 onClick={handleFetchUrl}
-                disabled={urlLoading}
+                disabled={urlLoading || screenshotLoading}
                 className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm disabled:opacity-50"
               >
                 {urlLoading ? '取得中...' : '取得'}
+              </button>
+              <button
+                onClick={handleScreenshot}
+                disabled={urlLoading || screenshotLoading || !urlInput.trim()}
+                title="スクリーンショット + Vision解析"
+                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg text-sm disabled:opacity-50"
+              >
+                <Camera size={14} />
+                {screenshotLoading ? '撮影中...' : '撮影'}
               </button>
               <label className="flex items-center gap-1.5 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm cursor-pointer">
                 <Upload size={14} />
@@ -190,6 +234,16 @@ export default function ProjectDetailPage() {
                 <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
               </label>
             </div>
+
+            {screenshotPreview && (
+              <div className="rounded-lg overflow-hidden border border-gray-700">
+                <div className="flex items-center justify-between px-3 py-2 bg-gray-800 text-xs text-gray-400">
+                  <span>スクリーンショットプレビュー</span>
+                  <button onClick={() => setScreenshotPreview(null)} className="hover:text-white">✕</button>
+                </div>
+                <img src={screenshotPreview} alt="screenshot" className="w-full max-h-64 object-cover object-top" />
+              </div>
+            )}
 
             <textarea
               className="w-full h-96 bg-gray-900 border border-gray-700 rounded-xl p-4 text-sm text-gray-200 font-mono outline-none resize-none focus:border-brand-500 leading-relaxed"
@@ -212,9 +266,45 @@ export default function ProjectDetailPage() {
         )}
 
         {tab === 'structure' && (
-          <div className="max-w-3xl">
+          <div className="max-w-3xl space-y-4">
             {currentProject.logic_structure ? (
-              <LogicTree structure={currentProject.logic_structure} />
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-400">ロジック構造</span>
+                  <button
+                    onClick={handleGenerateNarration}
+                    disabled={narrationLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+                  >
+                    <Mic size={14} />
+                    {narrationLoading ? 'セリフ生成中...' : 'セリフ生成'}
+                  </button>
+                </div>
+                <LogicTree structure={currentProject.logic_structure} />
+                {narration && (
+                  <div className="mt-6 space-y-3">
+                    <h3 className="text-sm font-medium text-teal-400">生成されたナレーション</h3>
+                    {(narration as { intro?: string }).intro && (
+                      <div className="bg-gray-800 rounded-lg p-4">
+                        <div className="text-xs text-gray-500 mb-1">オープニング</div>
+                        <p className="text-sm text-gray-200">{(narration as { intro: string }).intro}</p>
+                      </div>
+                    )}
+                    {((narration as { nodes?: { node_id: string; narration: string }[] }).nodes || []).map((n) => (
+                      <div key={n.node_id} className="bg-gray-800 rounded-lg p-4">
+                        <div className="text-xs text-gray-500 mb-1">{n.node_id}</div>
+                        <p className="text-sm text-gray-200">{n.narration}</p>
+                      </div>
+                    ))}
+                    {(narration as { closing?: string }).closing && (
+                      <div className="bg-gray-800 rounded-lg p-4">
+                        <div className="text-xs text-gray-500 mb-1">クロージング</div>
+                        <p className="text-sm text-gray-200">{(narration as { closing: string }).closing}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-gray-500 text-sm py-12 text-center">
                 コンテンツ入力タブで「構造分析」を実行してください

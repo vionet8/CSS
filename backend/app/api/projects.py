@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.project import Project
-from app.services.ai_service import extract_logic_structure, generate_slides_from_structure, improve_slide
+from app.services.ai_service import extract_logic_structure, generate_slides_from_structure, improve_slide, generate_narration
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -133,6 +133,25 @@ async def analyze_content(project_id: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(project)
     return {"logic_structure": structure}
+
+
+@router.post("/{project_id}/generate-narration")
+async def generate_project_narration(project_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if not project.logic_structure:
+        raise HTTPException(status_code=400, detail="Run /analyze first")
+
+    narration = await generate_narration(project.logic_structure)
+    assets = dict(project.assets or {})
+    assets["narration"] = narration
+    project.assets = assets
+    project.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(project)
+    return {"narration": narration}
 
 
 @router.post("/{project_id}/generate-slides")

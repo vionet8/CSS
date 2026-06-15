@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi.responses import Response
 from pydantic import BaseModel
 from app.services.content_service import fetch_url_content, parse_markdown, extract_pdf_text
 
@@ -26,6 +27,25 @@ async def fetch_url(req: URLFetchRequest):
 async def parse_md(req: MarkdownParseRequest):
     text = await parse_markdown(req.text)
     return {"text": text}
+
+
+@router.post("/screenshot")
+async def screenshot_url(req: URLFetchRequest):
+    try:
+        from app.services.screenshot_service import screenshot_url as do_screenshot
+        png, analysis = await do_screenshot(req.url)
+        # Return analysis text + base64 image
+        import base64
+        return {
+            "content": analysis,
+            "title": req.url,
+            "url": req.url,
+            "screenshot_b64": base64.standard_b64encode(png).decode(),
+        }
+    except ImportError:
+        raise HTTPException(503, "Playwright not installed. Run: pip install playwright && playwright install chromium")
+    except Exception as e:
+        raise HTTPException(400, str(e))
 
 
 @router.post("/upload-pdf")

@@ -133,6 +133,50 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
             raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
 
 
+async def generate_narration(structure: dict) -> dict:
+    """Generate spoken narration script from logic structure."""
+    prompt = f"""以下のプレゼンテーション論理構造から、読み上げ用のナレーション（セリフ）を生成してください。
+
+論理構造:
+{json.dumps(structure, ensure_ascii=False, indent=2)}
+
+各ノードに対応する自然な日本語のセリフを生成してください。
+以下のJSON形式で出力（コードブロックなし、JSONのみ）:
+{{
+  "intro": "オープニングのセリフ（30秒程度、聴衆への挨拶と本日のテーマ紹介）",
+  "nodes": [
+    {{
+      "node_id": "ノードのID",
+      "narration": "このノードの説明セリフ（20〜40秒程度）"
+    }}
+  ],
+  "closing": "クロージングのセリフ（30秒程度、まとめと行動喚起）"
+}}
+
+ルール:
+- 話し言葉で自然に、聴衆に語りかけるように書く
+- 「〜です」「〜ます」調の丁寧語
+- 専門用語は分かりやすく言い換える
+- 各ノードのnarrationはそのスライドで読むセリフ"""
+
+    message = await client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=4096,
+        messages=[{"role": "user", "content": prompt}],
+    )
+
+    raw = message.content[0].text.strip()
+    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+    match = re.search(r"\{[\s\S]*\}", raw)
+    if match:
+        raw = match.group(0)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        repaired = repair_json(raw)
+        return json.loads(repaired)
+
+
 async def improve_slide(slide: dict, instruction: str) -> dict:
     prompt = f"""以下のスライドを改善してください。
 

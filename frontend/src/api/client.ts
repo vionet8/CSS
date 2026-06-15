@@ -16,6 +16,7 @@ export const updateProject = (id: string, data: Record<string, unknown>) =>
   api.patch(`/projects/${id}`, data)
 export const deleteProject = (id: string) => api.delete(`/projects/${id}`)
 export const analyzeProject = (id: string) => api.post(`/projects/${id}/analyze`)
+export const generateNarration = (id: string) => api.post(`/projects/${id}/generate-narration`)
 export const generateSlides = (id: string) => api.post(`/projects/${id}/generate-slides`)
 export const updateSlide = (projectId: string, slideId: string, data: Record<string, unknown>) =>
   api.patch(`/projects/${projectId}/slides/${slideId}`, data)
@@ -24,6 +25,7 @@ export const improveSlide = (projectId: string, slideId: string, instruction: st
 
 // Content
 export const fetchUrl = (url: string) => api.post('/content/fetch-url', { url })
+export const screenshotUrl = (url: string) => api.post('/content/screenshot', { url })
 export const parseMarkdown = (text: string) => api.post('/content/parse-markdown', { text })
 export const uploadPdf = (file: File) => {
   const fd = new FormData()
