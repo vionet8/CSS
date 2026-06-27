@@ -5,6 +5,7 @@ from typing import List
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
     DATABASE_URL: str = "sqlite+aiosqlite:///./css.db"
     UPLOAD_DIR: str = "../uploads"
     CORS_ORIGINS_STR: str = "http://localhost:5173"

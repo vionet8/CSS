@@ -51,3 +51,15 @@ export const cropImage = (filename: string, x: number, y: number, width: number,
   api.post('/images/crop', { filename, x, y, width, height })
 export const splitImage = (filename: string, count: number) =>
   api.post('/images/split', { filename, count })
+
+// Video
+export const generatePromoVideo = (data: {
+  app_name: string
+  features: string
+  target: string
+  tone?: string
+  generate_images?: boolean
+}) => api.post('/video/generate-promo', data, { timeout: 90000 })
+
+export const generateVideoImage = (prompt: string) =>
+  api.post('/video/generate-image', { prompt }, { timeout: 90000 })

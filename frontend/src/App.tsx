@@ -5,6 +5,7 @@ import ProjectsPage from './pages/ProjectsPage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import ImagesPage from './pages/ImagesPage'
 import DocsPage from './pages/DocsPage'
+import VideoPage from './pages/VideoPage'
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="images" element={<ImagesPage />} />
+          <Route path="video" element={<VideoPage />} />
           <Route path="docs" element={<DocsPage />} />
         </Route>
       </Routes>
