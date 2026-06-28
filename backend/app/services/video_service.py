@@ -61,7 +61,7 @@ async def generate_promo_video(
 
 4. type=feature (4秒) - 主要機能デモ1：LINEチャットでの操作
    mockup.type: "line_chat"
-   mockup.data: {{"messages": [{{"role": "user", "text": "ユーザーの入力"}}, {{"role": "bot", "text": "AIの返答（詳しく）"}}, {{"role": "bot", "text": "続きの返答"}}}]}}
+   mockup.data: {{"messages": [{{"role": "user", "text": "ユーザーの入力"}}, {{"role": "bot", "text": "AIの返答（詳しく）"}}, {{"role": "bot", "text": "続きの返答"}}]}}
 
 5. type=feature (4秒) - 主要機能デモ2：レシピカード
    mockup.type: "recipe_card"

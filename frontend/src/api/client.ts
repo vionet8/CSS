@@ -63,3 +63,5 @@ export const generatePromoVideo = (data: {
 
 export const generateVideoImage = (prompt: string) =>
   api.post('/video/generate-image', { prompt }, { timeout: 90000 })
+
+export const getDemoVideo = () => api.get('/video/demo')

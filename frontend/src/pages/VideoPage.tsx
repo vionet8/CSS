@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Video, Wand2, Image, RefreshCw } from 'lucide-react'
+import { Video, Wand2, Image, RefreshCw, PlayCircle } from 'lucide-react'
 import ScenePlayer from '../components/video/ScenePlayer'
 import type { PromoVideo } from '../types/video'
 import * as api from '../api/client'
@@ -30,6 +30,19 @@ export default function VideoPage() {
   const [error, setError] = useState('')
   const [video, setVideo] = useState<PromoVideo | null>(null)
   const [imageLoading, setImageLoading] = useState<string | null>(null)
+
+  const handleLoadDemo = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await api.getDemoVideo()
+      setVideo(res.data)
+    } catch (e: unknown) {
+      setError('デモ読み込みエラー')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleGenerate = async () => {
     if (!appName.trim() || !features.trim()) return
@@ -171,6 +184,15 @@ export default function VideoPage() {
               ) : (
                 <><Wand2 size={18} /> 動画構成を自動生成</>
               )}
+            </button>
+
+            <button
+              onClick={handleLoadDemo}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors text-sm disabled:opacity-50"
+            >
+              <PlayCircle size={16} />
+              デモを表示（APIキー不要）
             </button>
 
             {error && (
