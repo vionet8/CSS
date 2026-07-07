@@ -35,6 +35,12 @@ export const generateMarketingAsset = (id: string, assetType: string) =>
   api.post(`/projects/${id}/marketing/assets`, { asset_type: assetType })
 export const deleteMarketingAsset = (id: string, assetType: string) =>
   api.delete(`/projects/${id}/marketing/assets/${assetType}`)
+export const auditMarketingProfile = (id: string) =>
+  api.post(`/projects/${id}/marketing/profile/audit`)
+export const importMaterial = (id: string, text: string, sourceName?: string) =>
+  api.post(`/projects/${id}/marketing/materials`, { text, source_name: sourceName ?? '' })
+export const deleteMaterialFragment = (id: string, fragmentId: string) =>
+  api.delete(`/projects/${id}/marketing/materials/${fragmentId}`)
 
 // Content
 export const fetchUrl = (url: string) => api.post('/content/fetch-url', { url })

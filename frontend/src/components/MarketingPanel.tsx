@@ -1,8 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Megaphone, Save, Sparkles, Copy, Check, Trash2, RefreshCw } from 'lucide-react'
+import {
+  Megaphone, Save, Sparkles, Copy, Check, Trash2, RefreshCw,
+  SearchCheck, PackageOpen, CircleCheck, CircleAlert, CircleX, ArrowDownToLine,
+} from 'lucide-react'
 import type { Project, MarketingFramework, MarketingAssetType, MarketingProfile } from '../types'
 import { errorDetail } from '../store/projectStore'
 import * as api from '../api/client'
+
+const FIELD_LABELS: Record<string, string> = {
+  product_name: 'プロダクト名',
+  target_audience: 'ターゲット顧客',
+  goal: '訴求ゴール',
+  tone: 'トーン',
+}
+
+const STATUS_UI: Record<string, { icon: typeof CircleCheck; className: string; label: string }> = {
+  ok:      { icon: CircleCheck, className: 'text-green-400',  label: 'OK' },
+  weak:    { icon: CircleAlert, className: 'text-yellow-400', label: '曖昧' },
+  missing: { icon: CircleX,     className: 'text-red-400',    label: '欠落' },
+}
 
 interface Props {
   project: Project
@@ -27,6 +43,10 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
   const [analyzing, setAnalyzing] = useState(false)
   const [generating, setGenerating] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [auditing, setAuditing] = useState(false)
+  const [materialText, setMaterialText] = useState('')
+  const [materialSource, setMaterialSource] = useState('')
+  const [importing, setImporting] = useState(false)
 
   useEffect(() => {
     api.getMarketingOptions()
@@ -43,6 +63,8 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
 
   const marketingAssets = project.assets?.marketing_assets ?? {}
   const currentFramework = project.logic_structure?.framework
+  const audit = project.assets?.profile_audit
+  const fragments = project.assets?.material_fragments ?? []
 
   const saveProfile = async () => {
     setSavingProfile(true)
@@ -93,6 +115,55 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
     }
   }
 
+  const runAudit = async () => {
+    setAuditing(true)
+    try {
+      await api.auditMarketingProfile(project.id)
+      await onRefresh()
+    } catch (e) {
+      alert(`プロファイル審査エラー: ${errorDetail(e)}`)
+    } finally {
+      setAuditing(false)
+    }
+  }
+
+  const applyExtracted = () => {
+    if (!audit) return
+    // 抽出できた値のみ反映（空欄は既存値を維持）。保存はユーザーが確認してから
+    setProfile((p) => {
+      const next = { ...p }
+      for (const key of Object.keys(FIELD_LABELS) as (keyof MarketingProfile)[]) {
+        const v = audit.extracted[key]
+        if (v) next[key] = v
+      }
+      return next
+    })
+  }
+
+  const importMaterialText = async () => {
+    if (!materialText.trim()) return
+    setImporting(true)
+    try {
+      await api.importMaterial(project.id, materialText, materialSource.trim())
+      setMaterialText('')
+      setMaterialSource('')
+      await onRefresh()
+    } catch (e) {
+      alert(`素材取り込みエラー: ${errorDetail(e)}`)
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const removeFragment = async (fragmentId: string) => {
+    try {
+      await api.deleteMaterialFragment(project.id, fragmentId)
+      await onRefresh()
+    } catch (e) {
+      alert(`断片削除エラー: ${errorDetail(e)}`)
+    }
+  }
+
   const copyText = async (key: string, text: string) => {
     try {
       await navigator.clipboard.writeText(text)
@@ -134,7 +205,16 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
             </label>
           ))}
         </div>
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex justify-between items-center flex-wrap gap-2">
+          <button
+            onClick={runAudit}
+            disabled={auditing}
+            title="コンテンツ入力タブの素材（LP等）からターゲット設計を読み取り、審査します"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 border border-purple-500/40 hover:bg-purple-600/30 text-purple-300 rounded-lg text-sm disabled:opacity-50"
+          >
+            <SearchCheck size={14} />
+            {auditing ? '審査中...' : '素材からターゲット設計を審査'}
+          </button>
           <button
             onClick={saveProfile}
             disabled={savingProfile}
@@ -144,6 +224,121 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
             {savingProfile ? '保存中...' : 'プロファイルを保存'}
           </button>
         </div>
+
+        {/* 審査結果 */}
+        {audit && (
+          <div className="mt-4 border-t border-gray-800 pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-white">審査結果</h4>
+              <span className="text-xs text-gray-500">
+                {new Date(audit.audited_at).toLocaleString('ja-JP')}
+              </span>
+            </div>
+            {audit.verdict && (
+              <p className="text-sm text-gray-300 bg-gray-800/60 border border-gray-700/60 rounded-lg p-3">
+                {audit.verdict}
+              </p>
+            )}
+            <div className="space-y-1.5">
+              {audit.findings.map((f, i) => {
+                const ui = STATUS_UI[f.status] ?? STATUS_UI.weak
+                const Icon = ui.icon
+                return (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <Icon size={15} className={`${ui.className} mt-0.5 shrink-0`} />
+                    <span className="text-gray-400 shrink-0">
+                      {FIELD_LABELS[f.field] ?? f.field}
+                      <span className={`ml-1 text-xs ${ui.className}`}>[{ui.label}]</span>:
+                    </span>
+                    <span className="text-gray-300">{f.comment}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {audit.questions.length > 0 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <p className="text-xs font-semibold text-yellow-300 mb-1.5">
+                  確認が必要です — 以下に答えてプロファイルを埋めてください:
+                </p>
+                <ul className="text-sm text-yellow-200/90 space-y-1 list-disc list-inside">
+                  {audit.questions.map((q, i) => <li key={i}>{q}</li>)}
+                </ul>
+              </div>
+            )}
+            {Object.values(audit.extracted).some(Boolean) && (
+              <button
+                onClick={applyExtracted}
+                className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-xs"
+                title="審査で読み取れた値を上のフォームに反映します（保存は別途行ってください）"
+              >
+                <ArrowDownToLine size={12} />
+                読み取れた値をフォームに反映
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* 外部素材の取り込み */}
+      <section className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h3 className="flex items-center gap-2 text-white font-semibold mb-1">
+          <PackageOpen size={16} className="text-brand-400" />
+          外部素材の取り込み
+          {fragments.length > 0 && (
+            <span className="text-xs bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded">
+              断片 {fragments.length}
+            </span>
+          )}
+        </h3>
+        <p className="text-xs text-gray-500 mb-3">
+          ChatGPT等で作った素材を貼り付けると、再利用できる断片（主張・ベネフィット・実績・キャッチコピー等）に分解して蓄積します。
+          蓄積した断片は、以降の構造分析・販促素材の生成に自動的に散りばめられます。
+        </p>
+        <textarea
+          className="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-gray-200 outline-none resize-none focus:border-brand-500"
+          placeholder="ここに外部AIで作った素材テキストを貼り付け..."
+          value={materialText}
+          onChange={(e) => setMaterialText(e.target.value)}
+        />
+        <div className="mt-2 flex gap-2">
+          <input
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+            placeholder="出所メモ（任意。例: ChatGPT LP案 v2）"
+            value={materialSource}
+            onChange={(e) => setMaterialSource(e.target.value)}
+          />
+          <button
+            onClick={importMaterialText}
+            disabled={importing || !materialText.trim()}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm disabled:opacity-50"
+          >
+            {importing ? <RefreshCw size={14} className="animate-spin" /> : <PackageOpen size={14} />}
+            {importing ? '分解中...' : '分解して取り込む'}
+          </button>
+        </div>
+
+        {fragments.length > 0 && (
+          <div className="mt-4 space-y-1.5 max-h-64 overflow-y-auto pr-1">
+            {fragments.map((f) => (
+              <div key={f.id} className="flex items-start gap-2 bg-gray-800/60 border border-gray-700/60 rounded-lg px-3 py-2 group">
+                <span className="shrink-0 text-xs bg-gray-700 text-gray-300 rounded px-1.5 py-0.5 mt-0.5">
+                  {f.kind}
+                </span>
+                <p className="flex-1 text-sm text-gray-300 leading-relaxed min-w-0">
+                  {f.text}
+                  {f.source && <span className="ml-2 text-xs text-gray-500">（{f.source}）</span>}
+                </p>
+                <button
+                  onClick={() => removeFragment(f.id)}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400"
+                  title="この断片を削除"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* セールス構造分析 */}

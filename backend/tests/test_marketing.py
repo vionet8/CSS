@@ -54,7 +54,7 @@ async def test_analyze_sets_structure_with_framework(client, monkeypatch):
     structure = {"title": "T", "thesis": "買おう", "nodes": [], "framework": "pasona"}
     captured = {}
 
-    async def fake_extract(content, framework, profile=None):
+    async def fake_extract(content, framework, profile=None, fragments=None):
         captured["framework"] = framework
         captured["profile"] = profile
         return structure
@@ -75,7 +75,7 @@ async def test_analyze_sets_structure_with_framework(client, monkeypatch):
 
 
 async def test_asset_generation_stores_and_persists(client, monkeypatch):
-    async def fake_generate(source, asset_type, profile=None):
+    async def fake_generate(source, asset_type, profile=None, fragments=None):
         return {
             "type": asset_type,
             "label": "テスト素材",
@@ -119,7 +119,7 @@ async def test_asset_rejects_unknown_type(client):
 async def test_asset_uses_structure_when_available(client, monkeypatch):
     captured = {}
 
-    async def fake_generate(source, asset_type, profile=None):
+    async def fake_generate(source, asset_type, profile=None, fragments=None):
         captured["source"] = source
         return {"type": asset_type, "label": "L", "variants": [{"title": "", "text": "x"}],
                 "generated_at": "2026-07-07T00:00:00+00:00"}
@@ -137,7 +137,7 @@ async def test_asset_uses_structure_when_available(client, monkeypatch):
 
 
 async def test_delete_asset(client, monkeypatch):
-    async def fake_generate(source, asset_type, profile=None):
+    async def fake_generate(source, asset_type, profile=None, fragments=None):
         return {"type": asset_type, "label": "L", "variants": [{"title": "", "text": "x"}],
                 "generated_at": "2026-07-07T00:00:00+00:00"}
 

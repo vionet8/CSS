@@ -71,9 +71,33 @@ export interface MarketingAssetType {
   description: string
 }
 
+export interface ProfileAuditFinding {
+  field: string
+  status: 'ok' | 'weak' | 'missing'
+  comment: string
+}
+
+export interface ProfileAudit {
+  extracted: Partial<MarketingProfile>
+  findings: ProfileAuditFinding[]
+  questions: string[]
+  verdict: string
+  audited_at: string
+}
+
+export interface MaterialFragment {
+  id: string
+  kind: string
+  text: string
+  source: string
+  created_at: string
+}
+
 export interface ProjectAssets {
   marketing_profile?: MarketingProfile
   marketing_assets?: Record<string, MarketingAsset>
+  profile_audit?: ProfileAudit
+  material_fragments?: MaterialFragment[]
   [key: string]: unknown
 }
 
