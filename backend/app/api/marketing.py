@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.project import Project
+from app.services.lp_service import render_lp_html
 from app.services.marketing_service import (
     ASSET_TYPES,
     FRAMEWORKS,
@@ -230,6 +232,28 @@ async def generate_asset(
     project.updated_at = datetime.now(timezone.utc)
     await db.commit()
     return {"asset": asset}
+
+
+@router.get("/projects/{project_id}/marketing/lp.html", response_class=HTMLResponse)
+async def export_lp_html(
+    project_id: str,
+    cta_url: str = "#",
+    accent: str = "#6366f1",
+    db: AsyncSession = Depends(get_db),
+):
+    """生成済みのLPコピーから、そのまま公開できる一枚HTMLのLPを書き出す。"""
+    project = await _get_project(project_id, db)
+    lp_asset = ((project.assets or {}).get("marketing_assets") or {}).get("lp_copy")
+    if not lp_asset:
+        raise HTTPException(
+            status_code=400, detail="先に販促素材の「LPコピー」を生成してください"
+        )
+    profile = (project.assets or {}).get("marketing_profile")
+    try:
+        html_text = render_lp_html(lp_asset, profile, cta_url=cta_url, accent=accent)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return HTMLResponse(html_text)
 
 
 @router.delete("/projects/{project_id}/marketing/assets/{asset_type}")

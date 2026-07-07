@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   Megaphone, Save, Sparkles, Copy, Check, Trash2, RefreshCw,
   SearchCheck, PackageOpen, CircleCheck, CircleAlert, CircleX, ArrowDownToLine,
+  Globe, Eye, Download,
 } from 'lucide-react'
 import type { Project, MarketingFramework, MarketingAssetType, MarketingProfile } from '../types'
 import { errorDetail } from '../store/projectStore'
@@ -47,6 +48,9 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
   const [materialText, setMaterialText] = useState('')
   const [materialSource, setMaterialSource] = useState('')
   const [importing, setImporting] = useState(false)
+  const [ctaUrl, setCtaUrl] = useState('')
+  const [lpAccent, setLpAccent] = useState('#6366f1')
+  const [exportingLp, setExportingLp] = useState(false)
 
   useEffect(() => {
     api.getMarketingOptions()
@@ -162,6 +166,38 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
     } catch (e) {
       alert(`断片削除エラー: ${errorDetail(e)}`)
     }
+  }
+
+  const fetchLpHtml = async (): Promise<string | null> => {
+    setExportingLp(true)
+    try {
+      const res = await api.exportLpHtml(project.id, ctaUrl.trim() || '#', lpAccent)
+      return res.data
+    } catch (e) {
+      alert(`LP書き出しエラー: ${errorDetail(e)}`)
+      return null
+    } finally {
+      setExportingLp(false)
+    }
+  }
+
+  const previewLp = async () => {
+    const htmlText = await fetchLpHtml()
+    if (!htmlText) return
+    const blob = new Blob([htmlText], { type: 'text/html' })
+    window.open(URL.createObjectURL(blob), '_blank')
+  }
+
+  const downloadLp = async () => {
+    const htmlText = await fetchLpHtml()
+    if (!htmlText) return
+    const blob = new Blob([htmlText], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${profile.product_name || project.title || 'lp'}.html`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const copyText = async (key: string, text: string) => {
@@ -414,6 +450,51 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
           })}
         </div>
       </section>
+
+      {/* LP書き出し */}
+      {marketingAssets['lp_copy'] && (
+        <section className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+          <h3 className="flex items-center gap-2 text-white font-semibold mb-1">
+            <Globe size={16} className="text-brand-400" />
+            LPをHTMLで書き出す
+          </h3>
+          <p className="text-xs text-gray-500 mb-4">
+            生成済みのLPコピーから、そのまま公開できる一枚もののHTMLを作ります（Vercel等に置くだけで公開可能）。
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="flex-1 min-w-48 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+              placeholder="CTAボタンのリンク先URL（例: https://.../signup）"
+              value={ctaUrl}
+              onChange={(e) => setCtaUrl(e.target.value)}
+            />
+            <label className="flex items-center gap-1.5 text-xs text-gray-400">
+              アクセント
+              <input
+                type="color"
+                value={lpAccent}
+                onChange={(e) => setLpAccent(e.target.value)}
+                className="h-8 w-10 bg-transparent border border-gray-700 rounded cursor-pointer"
+              />
+            </label>
+            <button
+              onClick={previewLp}
+              disabled={exportingLp}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm disabled:opacity-50"
+            >
+              <Eye size={14} /> プレビュー
+            </button>
+            <button
+              onClick={downloadLp}
+              disabled={exportingLp}
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-sm disabled:opacity-50"
+            >
+              <Download size={14} />
+              {exportingLp ? '生成中...' : 'HTMLをダウンロード'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* 生成済み素材 */}
       {Object.values(marketingAssets).map((asset) => (

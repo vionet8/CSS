@@ -41,6 +41,11 @@ export const importMaterial = (id: string, text: string, sourceName?: string) =>
   api.post(`/projects/${id}/marketing/materials`, { text, source_name: sourceName ?? '' })
 export const deleteMaterialFragment = (id: string, fragmentId: string) =>
   api.delete(`/projects/${id}/marketing/materials/${fragmentId}`)
+export const exportLpHtml = (id: string, ctaUrl: string, accent: string) =>
+  api.get<string>(`/projects/${id}/marketing/lp.html`, {
+    params: { cta_url: ctaUrl, accent },
+    responseType: 'text',
+  })
 
 // Content
 export const fetchUrl = (url: string) => api.post('/content/fetch-url', { url })
