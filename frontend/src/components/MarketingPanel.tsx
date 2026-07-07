@@ -51,12 +51,16 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
   const [ctaUrl, setCtaUrl] = useState('')
   const [lpAccent, setLpAccent] = useState('#6366f1')
   const [exportingLp, setExportingLp] = useState(false)
+  const [lpTemplates, setLpTemplates] = useState<MarketingAssetType[]>([])
+  const [lpTemplate, setLpTemplate] = useState('standard')
+  const [heroIndex, setHeroIndex] = useState(-1)
 
   useEffect(() => {
     api.getMarketingOptions()
       .then(r => {
         setFrameworks(r.data.frameworks)
         setAssetTypes(r.data.asset_types)
+        setLpTemplates(r.data.lp_templates ?? [])
       })
       .catch(() => {})
   }, [])
@@ -171,7 +175,10 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
   const fetchLpHtml = async (): Promise<string | null> => {
     setExportingLp(true)
     try {
-      const res = await api.exportLpHtml(project.id, ctaUrl.trim() || '#', lpAccent)
+      const res = await api.exportLpHtml(
+        project.id, ctaUrl.trim() || '#', lpAccent, lpTemplate,
+        heroIndex >= 0 ? heroIndex : undefined,
+      )
       return res.data
     } catch (e) {
       alert(`LP書き出しエラー: ${errorDetail(e)}`)
@@ -461,6 +468,38 @@ export default function MarketingPanel({ project, onRefresh }: Props) {
           <p className="text-xs text-gray-500 mb-4">
             生成済みのLPコピーから、そのまま公開できる一枚もののHTMLを作ります（Vercel等に置くだけで公開可能）。
           </p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {lpTemplates.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setLpTemplate(t.id)}
+                title={t.description}
+                className={`px-3 py-2 rounded-lg text-xs text-left border transition-colors ${
+                  lpTemplate === t.id
+                    ? 'bg-brand-600/20 border-brand-500 text-brand-300'
+                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
+                }`}
+              >
+                <div className="font-semibold">{t.label}</div>
+                <div className="opacity-70 mt-0.5">{t.description}</div>
+              </button>
+            ))}
+          </div>
+          {(marketingAssets['catchcopy']?.variants?.length ?? 0) > 0 && (
+            <label className="block mb-3 text-xs text-gray-400">
+              ヒーロー見出し（キャッチコピーから差し替え可能）
+              <select
+                className="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+                value={heroIndex}
+                onChange={(e) => setHeroIndex(Number(e.target.value))}
+              >
+                <option value={-1}>LPコピーの見出しをそのまま使う</option>
+                {marketingAssets['catchcopy'].variants.map((v, i) => (
+                  <option key={i} value={i}>【{v.title}】{v.text}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <input
               className="flex-1 min-w-48 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-brand-500"

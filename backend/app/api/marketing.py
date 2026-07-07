@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.project import Project
-from app.services.lp_service import render_lp_html
+from app.services.lp_service import LP_TEMPLATES, render_lp_html
 from app.services.marketing_service import (
     ASSET_TYPES,
     FRAMEWORKS,
@@ -64,7 +64,12 @@ def _touch_assets(project: Project) -> dict:
 
 @router.get("/marketing/options")
 async def marketing_options():
-    return options()
+    result = options()
+    result["lp_templates"] = [
+        {"id": k, "label": v["label"], "description": v["description"]}
+        for k, v in LP_TEMPLATES.items()
+    ]
+    return result
 
 
 @router.put("/projects/{project_id}/marketing/profile")
@@ -239,18 +244,46 @@ async def export_lp_html(
     project_id: str,
     cta_url: str = "#",
     accent: str = "#6366f1",
+    template: str = "standard",
+    catchcopy_index: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    """生成済みのLPコピーから、そのまま公開できる一枚HTMLのLPを書き出す。"""
+    """生成済みのLPコピーから、そのまま公開できる一枚HTMLのLPを書き出す。
+
+    - template: standard（カード型）/ salesletter（縦長・構造本文入り）/ minimal（1画面型）
+    - catchcopy_index: キャッチコピー素材のN案目をヒーロー見出しに差し替える
+    """
     project = await _get_project(project_id, db)
-    lp_asset = ((project.assets or {}).get("marketing_assets") or {}).get("lp_copy")
+    project_assets = project.assets or {}
+    marketing_assets = project_assets.get("marketing_assets") or {}
+    lp_asset = marketing_assets.get("lp_copy")
     if not lp_asset:
         raise HTTPException(
             status_code=400, detail="先に販促素材の「LPコピー」を生成してください"
         )
-    profile = (project.assets or {}).get("marketing_profile")
+
+    hero_override = None
+    if catchcopy_index is not None:
+        catchcopy = marketing_assets.get("catchcopy")
+        variants = (catchcopy or {}).get("variants") or []
+        if not (0 <= catchcopy_index < len(variants)):
+            raise HTTPException(
+                status_code=400,
+                detail="catchcopy_index が不正です。キャッチコピー素材を生成済みか確認してください",
+            )
+        hero_override = variants[catchcopy_index].get("text") or None
+
+    profile = project_assets.get("marketing_profile")
     try:
-        html_text = render_lp_html(lp_asset, profile, cta_url=cta_url, accent=accent)
+        html_text = render_lp_html(
+            lp_asset,
+            profile,
+            cta_url=cta_url,
+            accent=accent,
+            template=template,
+            hero_override=hero_override,
+            structure=project.logic_structure,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return HTMLResponse(html_text)

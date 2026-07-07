@@ -1,5 +1,11 @@
 import pytest
-from app.services.lp_service import render_lp_html, validate_accent, validate_cta_url
+from app.services.lp_service import (
+    LP_TEMPLATES,
+    render_lp_html,
+    validate_accent,
+    validate_cta_url,
+    validate_template,
+)
 
 LP_ASSET = {
     "type": "lp_copy",
@@ -52,6 +58,57 @@ def test_validate_accent():
             validate_accent(bad)
 
 
+STRUCTURE = {
+    "title": "T",
+    "thesis": "主張",
+    "framework": "pasona",
+    "nodes": [
+        {"id": "n1", "type": "問題", "title": "キャリアの迷子が増えている",
+         "content": "選択肢が多すぎて決められない時代です。",
+         "children": [{"id": "n2", "type": "共感", "title": "", "content": "私たちも同じ悩みを抱えていました。", "children": []}]},
+        {"id": "n3", "type": "解決策", "title": "AIで現在地を可視化する",
+         "content": "診断とマップで迷いを構造化します。", "children": []},
+    ],
+}
+
+
+def test_validate_template():
+    for t in LP_TEMPLATES:
+        assert validate_template(t) == t
+    with pytest.raises(ValueError):
+        validate_template("fancy")
+
+
+def test_render_salesletter_includes_structure_sections():
+    html_text = render_lp_html(LP_ASSET, PROFILE, template="salesletter", structure=STRUCTURE)
+    assert "キャリアの迷子が増えている" in html_text          # 構造ノード見出し
+    assert "選択肢が多すぎて決められない時代です。" in html_text  # 本文
+    assert "私たちも同じ悩みを抱えていました。" in html_text      # 子ノード
+    assert "checklist" in html_text                              # ベネフィットはチェックリスト
+    assert "迷わないキャリアを、今日から" in html_text
+
+
+def test_render_salesletter_without_structure():
+    html_text = render_lp_html(LP_ASSET, PROFILE, template="salesletter")
+    assert "迷わないキャリアを、今日から" in html_text
+    assert "無料で始める" in html_text
+
+
+def test_render_minimal():
+    html_text = render_lp_html(LP_ASSET, PROFILE, template="minimal")
+    assert "hero-min" in html_text
+    assert "迷わないキャリアを、今日から" in html_text
+    assert "3分で現在地がわかる" in html_text  # ポイント行
+
+
+def test_hero_override_replaces_headline():
+    html_text = render_lp_html(LP_ASSET, PROFILE, hero_override="あなたの5年後、見えていますか？")
+    assert "あなたの5年後、見えていますか？" in html_text
+    assert "<h1><span class=\"underline\">迷わないキャリアを、今日から" not in html_text
+    # サブコピーは元のまま
+    assert "AIがあなたの5年後を一緒に描く" in html_text
+
+
 def test_validate_cta_url_blocks_javascript():
     assert validate_cta_url("") == "#"
     assert validate_cta_url("https://a.example") == "https://a.example"
@@ -101,3 +158,43 @@ async def test_lp_export_endpoint(client, monkeypatch):
         f"/projects/{p['id']}/marketing/lp.html", params={"accent": "red"}
     )
     assert res.status_code == 400
+
+    res = await client.get(
+        f"/projects/{p['id']}/marketing/lp.html", params={"template": "fancy"}
+    )
+    assert res.status_code == 400
+
+
+async def test_lp_export_with_catchcopy_hero(client, monkeypatch):
+    assets = {
+        "lp_copy": LP_ASSET,
+        "catchcopy": {"type": "catchcopy", "label": "キャッチコピー", "variants": [
+            {"title": "問いかけ", "text": "あなたの5年後、見えていますか？"},
+        ], "generated_at": "2026-07-07T00:00:00+00:00"},
+    }
+
+    async def fake_generate(source, asset_type, profile=None, fragments=None):
+        return assets[asset_type]
+
+    monkeypatch.setattr("app.api.marketing.generate_marketing_asset", fake_generate)
+    p = await create_project(client, raw_content="本文")
+    for t in ["lp_copy", "catchcopy"]:
+        await client.post(f"/projects/{p['id']}/marketing/assets", json={"asset_type": t})
+
+    res = await client.get(
+        f"/projects/{p['id']}/marketing/lp.html",
+        params={"catchcopy_index": 0, "template": "minimal"},
+    )
+    assert res.status_code == 200
+    assert "あなたの5年後、見えていますか？" in res.text
+
+    res = await client.get(
+        f"/projects/{p['id']}/marketing/lp.html", params={"catchcopy_index": 9}
+    )
+    assert res.status_code == 400  # 範囲外
+
+
+async def test_options_include_lp_templates(client):
+    res = await client.get("/marketing/options")
+    ids = {t["id"] for t in res.json()["lp_templates"]}
+    assert ids == {"standard", "salesletter", "minimal"}
