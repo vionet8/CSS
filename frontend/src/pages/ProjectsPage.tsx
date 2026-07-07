@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PlusCircle, Trash2, ChevronRight } from 'lucide-react'
-import { useProjectStore } from '../store/projectStore'
+import { PlusCircle, Trash2, ChevronRight, Download, Upload } from 'lucide-react'
+import { useProjectStore, errorDetail } from '../store/projectStore'
+import * as api from '../api/client'
 
 export default function ProjectsPage() {
   const navigate = useNavigate()
@@ -20,7 +21,48 @@ export default function ProjectsPage() {
       setCreating(false)
       navigate(`/projects/${p.id}`)
     } catch (e) {
-      alert(`プロジェクト作成エラー: ${e instanceof Error ? e.message : String(e)}`)
+      alert(`プロジェクト作成エラー: ${errorDetail(e)}`)
+    }
+  }
+
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`「${title}」を削除しますか？この操作は取り消せません。`)) return
+    try {
+      await deleteProject(id)
+    } catch (e) {
+      alert(`削除エラー: ${errorDetail(e)}`)
+    }
+  }
+
+  const handleExport = async (id: string, title: string) => {
+    try {
+      const res = await api.exportProject(id)
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${title || 'project'}.css-project.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      alert(`エクスポートエラー: ${errorDetail(e)}`)
+    }
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      if (!data.title) throw new Error('title フィールドがありません')
+      const res = await api.importProject(data)
+      await fetchProjects()
+      navigate(`/projects/${res.data.id}`)
+    } catch (err) {
+      alert(`インポートエラー: ${err instanceof SyntaxError ? 'JSONの形式が不正です' : errorDetail(err)}`)
+    } finally {
+      e.target.value = ''
     }
   }
 
@@ -28,13 +70,20 @@ export default function ProjectsPage() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white">プロジェクト</h1>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          <PlusCircle size={16} />
-          新規作成
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg text-sm cursor-pointer transition-colors">
+            <Upload size={16} />
+            インポート
+            <input type="file" accept=".json,application/json" className="hidden" onChange={handleImport} />
+          </label>
+          <button
+            onClick={() => setCreating(true)}
+            className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            <PlusCircle size={16} />
+            新規作成
+          </button>
+        </div>
       </div>
 
       {creating && (
@@ -81,7 +130,15 @@ export default function ProjectsPage() {
                 </p>
               </div>
               <button
-                onClick={(e) => { e.stopPropagation(); deleteProject(p.id) }}
+                title="JSONエクスポート"
+                onClick={(e) => { e.stopPropagation(); handleExport(p.id, p.title) }}
+                className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-brand-400 transition-opacity"
+              >
+                <Download size={16} />
+              </button>
+              <button
+                title="削除"
+                onClick={(e) => { e.stopPropagation(); handleDelete(p.id, p.title) }}
                 className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-red-400 transition-opacity"
               >
                 <Trash2 size={16} />

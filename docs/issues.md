@@ -1,0 +1,79 @@
+# 課題管理台帳（Issues Ledger）
+
+**最終更新**: 2026-07-07
+**目的**: コードベース監査で検出した問題点・課題・未達成項目を一元管理する。
+新しい課題を見つけたらここに追記し、解決したら「✅ 解決済み」に移す。
+
+---
+
+## ✅ 解決済み（2026-07-07 監査で検出・修正）
+
+### バグ
+
+| # | 深刻度 | 内容 | 修正 |
+|---|--------|------|------|
+| B1 | 高 | `PATCH /projects/{id}/slides/{slide_id}` がスライド dict をその場で更新していたため、SQLAlchemy が変更を検知できず**編集がDBに保存されないことがある** | 新しい dict/list を作って代入する方式に変更。回帰テスト `test_update_slide_persists` 追加 |
+| B2 | 高 | 画像API（`/images/file/{filename}`・resize・crop・split）がファイル名を検証せず、`../` を含む名前で**アップロードディレクトリ外のファイルにアクセス可能**（パストラバーサル） | `safe_filename()` で `/` `\` `..` 先頭ドットを拒否。テスト `test_path_traversal_rejected` 追加 |
+| B3 | 中 | スライド生成・AI改善のルートに例外処理がなく、AI応答異常時に生の500エラーが返る | try/except を追加し、AI起因は502 + 日本語メッセージに統一 |
+| B4 | 中 | `improve_slide` だけコードブロック除去・json_repair フォールバックがなく、AI応答形式が崩れると必ず失敗 | JSONパースを `_parse_ai_json()` に共通化。改善時に `id`/`order` が書き換わらないよう保護も追加 |
+| B5 | 中 | フロントの構造分析・スライド生成が**失敗してもタブが切り替わる**（ストアがエラーを握りつぶすため） | ストアのアクションが成功/失敗を返すようにし、成功時のみタブ遷移 |
+| B6 | 中 | URL取得・PDF読込・スライド保存系ハンドラ（SlideCard の5関数）に catch がなく、失敗が**ユーザーに一切通知されない** | 全ハンドラにエラー通知を追加。axios エラー整形を `errorDetail()` に共通化 |
+| B7 | 低 | `tsc --noEmit` が `import.meta.env` で3件エラー（`vite-env.d.ts` 欠落）。ビルドスクリプトも型チェックを実行していなかった | `vite-env.d.ts` 追加、`npm run build` に `tsc --noEmit` を組み込み |
+| B8 | 低 | PDFアップロードが `file.filename.endswith(".pdf")` のため、ファイル名が `None` でクラッシュ・`.PDF`（大文字）が拒否される | None安全 + 小文字化して判定 |
+| B9 | 低 | 画像アップロードが拡張子・サイズ・画像としての妥当性を検証せず、任意ファイルを保存できた | 拡張子ホワイトリスト・20MB上限・PIL verify を追加 |
+| B10 | 低 | `except (ValueError, Exception)` という冗長な例外捕捉、非推奨 `@app.on_event("startup")`、Pydantic v1形式 `class Config` | それぞれ整理（lifespan 移行、`SettingsConfigDict` 化） |
+
+### 設計・保守性の課題
+
+| # | 内容 | 対応 |
+|---|------|------|
+| D1 | テストが1件も存在しない | pytest + 一時SQLite + AIモックで**テスト30件**を整備（`backend/tests/`） |
+| D2 | CIがない（壊れたコードがそのままpushできる） | GitHub Actions を追加（backend: pytest / frontend: 型チェック+ビルド） |
+| D3 | Claudeモデル名が3箇所にハードコード | `CLAUDE_MODEL` 環境変数に集約（デフォルト: claude-sonnet-4-6） |
+| D4 | DB接続設定が `config.py` と `database.py` で二重管理 | `settings.DATABASE_URL` に一本化 |
+| D5 | API キー未設定時に不可解なエラーになる | 呼び出し前にチェックし「ANTHROPIC_API_KEY が未設定です」と明示 |
+| D6 | `fetch-url` が任意スキーム（file:// 等）を受け付ける | http/https のみ許可 |
+| D7 | プロジェクト削除が確認なしで即実行される | 確認ダイアログを追加 |
+
+### 未達成項目の実装
+
+| 項目 | 状態 |
+|------|------|
+| プロジェクトのエクスポート（JSONダウンロード） | ✅ 実装（`GET /projects/{id}/export` + 一覧のダウンロードボタン） |
+| プロジェクトのインポート（JSONアップロード） | ✅ 実装（`POST /projects/import` + 一覧のインポートボタン、往復テスト付き） |
+
+---
+
+## 🔲 未解決の課題（優先度順）
+
+### 機能（docs/next_actions.md のフェーズ計画より）
+
+| 優先度 | 項目 | メモ |
+|--------|------|------|
+| 高 | スライドDnD並べ替え | `@dnd-kit` は導入済みだが未使用。`order` 更新APIはあるのでフロント実装のみ |
+| 高 | スライドエクスポート（PNG / PDF） | 推奨: html2canvas + jspdf でPDF → その後PPTX検討 |
+| 中 | Phase 2: FFmpeg 動画ユーティリティ | 未着手 |
+| 中 | Phase 3: Whisper 文字起こし・字幕 | 未着手（推奨モデル: small） |
+| 低 | Phase 4: YouTube 人気動画分析（yt-dlp） | 未着手 |
+| 低 | Phase 5: 認知変化・FPRL 分析 | 未着手 |
+| 低 | スライドのテーマ切替 / 画像割り当てUI / Markdownプレビュー / OCR | 細かい改善Todo |
+
+### 技術的負債
+
+| 項目 | メモ |
+|------|------|
+| PyPDF2 が非推奨 | 後継の `pypdf` へ移行する（DeprecationWarning が出ている） |
+| `alert()` によるエラー通知 | トースト通知コンポーネントに置き換えるとUX向上 |
+| フロントにユニットテストがない | Vitest 導入を検討（現状は型チェック+ビルドのみCIで担保） |
+| ESLint / ruff などのリンタ未導入 | CIに追加するとさらに堅牢に |
+| 画像に孤児ファイルが溜まる | プロジェクト削除時に関連画像を消す仕組みがない |
+| requirements の `opencv-python-headless` / `psd-tools` | 現状コードで未使用。依存を減らすか用途を明確化 |
+
+---
+
+## 運用ルール（課題管理の仕組み）
+
+1. **課題を見つけたら**: この台帳の「未解決」に1行追加する（GitHub Issue を立てた場合はリンクを貼る）
+2. **着手するとき**: ブランチを切り、対応するテストを先に書く
+3. **解決したら**: CI が緑であることを確認し、「解決済み」セクションへ移動
+4. **リリース前チェック**: `backend: python -m pytest` / `frontend: npm run build` が両方通ること（CIが自動で検証）

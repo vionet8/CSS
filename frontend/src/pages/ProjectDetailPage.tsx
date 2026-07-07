@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2 } from 'lucide-react'
 import FullscreenPresenter from '../components/FullscreenPresenter'
-import { useProjectStore } from '../store/projectStore'
+import { useProjectStore, errorDetail } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
 import SlideCard from '../components/SlideCard'
 import type { Slide } from '../types'
@@ -52,6 +52,8 @@ export default function ProjectDetailPage() {
       const combined = `# ${fetched.title}\n\n${fetched.content}`
       setContent((prev) => (prev ? prev + '\n\n---\n\n' + combined : combined))
       setUrlInput('')
+    } catch (e) {
+      alert(`URL取得エラー: ${errorDetail(e)}`)
     } finally {
       setUrlLoading(false)
     }
@@ -60,25 +62,31 @@ export default function ProjectDetailPage() {
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const res = await api.uploadPdf(file)
-    setContent((prev) => (prev ? prev + '\n\n---\n\n' + res.data.text : res.data.text))
+    try {
+      const res = await api.uploadPdf(file)
+      setContent((prev) => (prev ? prev + '\n\n---\n\n' + res.data.text : res.data.text))
+    } catch (err) {
+      alert(`PDF読み込みエラー: ${errorDetail(err)}`)
+    } finally {
+      e.target.value = ''
+    }
   }
 
   const handleAnalyze = async () => {
     if (!id) return
     try {
       await handleSaveContent()
-      await analyzeContent(id)
-      setTab('structure')
     } catch (e) {
-      alert(`構造分析エラー: ${e instanceof Error ? e.message : String(e)}`)
+      alert(`保存エラー: ${errorDetail(e)}`)
+      return
     }
+    // 失敗時はエラーバナー表示のままタブを切り替えない
+    if (await analyzeContent(id)) setTab('structure')
   }
 
   const handleGenerateSlides = async () => {
     if (!id) return
-    await generateSlides(id)
-    setTab('slides')
+    if (await generateSlides(id)) setTab('slides')
   }
 
   if (!currentProject) {

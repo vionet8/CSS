@@ -1,10 +1,11 @@
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
 
 class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
+    CLAUDE_MODEL: str = "claude-sonnet-4-6"
     DATABASE_URL: str = "sqlite+aiosqlite:///./css.db"
     UPLOAD_DIR: str = "../uploads"
     CORS_ORIGINS_STR: str = "http://localhost:5173"
@@ -30,8 +31,7 @@ class Settings(BaseSettings):
             origins.append(self.FRONTEND_URL)
         return origins
 
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 settings = Settings()

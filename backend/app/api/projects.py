@@ -3,12 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
 from typing import Optional
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.models.project import Project
 from app.services.ai_service import extract_logic_structure, generate_slides_from_structure, improve_slide
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -47,6 +50,15 @@ class SlideImproveRequest(BaseModel):
     instruction: str
 
 
+class ProjectImport(BaseModel):
+    title: str
+    description: str = ""
+    raw_content: str = ""
+    logic_structure: Optional[dict] = None
+    slides: Optional[list] = None
+    assets: Optional[dict] = None
+
+
 @router.get("/")
 async def list_projects(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Project).order_by(Project.updated_at.desc()))
@@ -77,6 +89,36 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
     await db.commit()
     await db.refresh(project)
     return project_to_dict(project)
+
+
+@router.post("/import")
+async def import_project(data: ProjectImport, db: AsyncSession = Depends(get_db)):
+    """エクスポートしたJSONからプロジェクトを復元する（IDは新規発行）。"""
+    project = Project(
+        id=str(uuid.uuid4()),
+        title=data.title,
+        description=data.description,
+        raw_content=data.raw_content,
+        logic_structure=data.logic_structure,
+        slides=data.slides,
+        assets=data.assets,
+    )
+    db.add(project)
+    await db.commit()
+    await db.refresh(project)
+    return project_to_dict(project)
+
+
+@router.get("/{project_id}/export")
+async def export_project(project_id: str, db: AsyncSession = Depends(get_db)):
+    """プロジェクト全体をJSONとしてエクスポートする。"""
+    result = await db.execute(select(Project).where(Project.id == project_id))
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    data = project_to_dict(project)
+    data["export_version"] = 1
+    return data
 
 
 @router.get("/{project_id}")
@@ -126,8 +168,11 @@ async def analyze_content(project_id: str, db: AsyncSession = Depends(get_db)):
 
     try:
         structure = await extract_logic_structure(project.raw_content)
-    except (ValueError, Exception) as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("analyze failed")
+        raise HTTPException(status_code=500, detail=f"構造分析に失敗しました: {e}")
     project.logic_structure = structure
     project.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -144,7 +189,13 @@ async def generate_slides(project_id: str, db: AsyncSession = Depends(get_db)):
     if not project.logic_structure:
         raise HTTPException(status_code=400, detail="Run /analyze first")
 
-    slides = await generate_slides_from_structure(project.logic_structure)
+    try:
+        slides = await generate_slides_from_structure(project.logic_structure)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("generate-slides failed")
+        raise HTTPException(status_code=500, detail=f"スライド生成に失敗しました: {e}")
     project.slides = slides
     project.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -166,7 +217,13 @@ async def improve_single_slide(
     if not target:
         raise HTTPException(status_code=404, detail="Slide not found")
 
-    improved = await improve_slide(target, req.instruction)
+    try:
+        improved = await improve_slide(target, req.instruction)
+    except ValueError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    except Exception as e:
+        logger.exception("improve-slide failed")
+        raise HTTPException(status_code=500, detail=f"スライド改善に失敗しました: {e}")
     idx = slides.index(target)
     slides[idx] = improved
     project.slides = slides
@@ -184,13 +241,16 @@ async def update_slide(
     if not project or not project.slides:
         raise HTTPException(status_code=404, detail="Not found")
 
+    # 注意: 既存 dict をその場で更新すると SQLAlchemy が変更を検知できず
+    # DB に保存されないため、必ず新しい dict / list を作って代入する
     slides = list(project.slides)
-    target = next((s for s in slides if s["id"] == slide_id), None)
-    if not target:
+    idx = next((i for i, s in enumerate(slides) if s["id"] == slide_id), None)
+    if idx is None:
         raise HTTPException(status_code=404, detail="Slide not found")
 
-    target.update(data)
+    updated = {**slides[idx], **data, "id": slide_id}
+    slides[idx] = updated
     project.slides = slides
     project.updated_at = datetime.now(timezone.utc)
     await db.commit()
-    return {"slide": target}
+    return {"slide": updated}

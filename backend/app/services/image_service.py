@@ -5,17 +5,38 @@ from pathlib import Path
 from app.core.config import settings
 
 
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+
+
+def safe_filename(filename: str) -> str:
+    """パストラバーサルを防ぐ。ディレクトリ区切りや親参照を含む名前は拒否する。"""
+    if (
+        not filename
+        or filename != Path(filename).name
+        or "/" in filename
+        or "\\" in filename
+        or ".." in filename
+        or filename.startswith(".")
+    ):
+        raise ValueError(f"Invalid filename: {filename!r}")
+    return filename
+
+
 def get_upload_path(subdir: str, filename: str) -> Path:
+    safe_filename(filename)
     base = Path(settings.UPLOAD_DIR) / subdir
     base.mkdir(parents=True, exist_ok=True)
     return base / filename
 
 
 async def save_image(file_bytes: bytes, filename: str) -> dict:
+    # 先に画像として開けることを検証してから書き込む（不正ファイルを残さない）
+    img = Image.open(io.BytesIO(file_bytes))
+    img.verify()
+    img = Image.open(io.BytesIO(file_bytes))
+
     path = get_upload_path("images", filename)
     path.write_bytes(file_bytes)
-
-    img = Image.open(io.BytesIO(file_bytes))
     return {
         "filename": filename,
         "path": str(path),

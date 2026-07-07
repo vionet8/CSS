@@ -8,7 +8,41 @@ from json_repair import repair_json
 logger = logging.getLogger(__name__)
 
 
-client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY.strip())
+client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY.strip() or "unset")
+
+
+def _ensure_api_key():
+    if not settings.ANTHROPIC_API_KEY.strip():
+        raise ValueError(
+            "ANTHROPIC_API_KEY が未設定です。backend/.env に設定してください。"
+        )
+
+
+def _parse_ai_json(raw: str, pattern: str, label: str):
+    """AI応答からJSONを抽出してパースする。コードブロック除去 + json_repair フォールバック付き。"""
+    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
+    match = re.search(pattern, raw)
+    if match:
+        raw = match.group(0)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        repaired = repair_json(raw)
+        try:
+            return json.loads(repaired)
+        except json.JSONDecodeError as e:
+            logger.error("JSON parse error (%s) after repair: %s\nRaw: %s", label, e, raw[:1000])
+            raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
+
+
+async def _call_claude(prompt: str, max_tokens: int = 4096) -> str:
+    _ensure_api_key()
+    message = await client.messages.create(
+        model=settings.CLAUDE_MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return message.content[0].text.strip()
 
 
 async def extract_logic_structure(content: str) -> dict:
@@ -35,28 +69,12 @@ async def extract_logic_structure(content: str) -> dict:
 typeは以下から選択: 現状, 問題, 原因, 解決策, 根拠, 具体例, 結論
 childrenには同じ構造のノードを入れてください。"""
 
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
+    raw = await _call_claude(prompt)
     logger.info("extract_logic_structure raw response (first 500): %s", raw[:500])
-    # コードブロック除去
-    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
-    match = re.search(r"\{[\s\S]*\}", raw)
-    if match:
-        raw = match.group(0)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        repaired = repair_json(raw)
-        try:
-            return json.loads(repaired)
-        except json.JSONDecodeError as e:
-            logger.error("JSON parse error after repair: %s\nRaw: %s", e, raw[:1000])
-            raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
+    result = _parse_ai_json(raw, r"\{[\s\S]*\}", "structure")
+    if not isinstance(result, dict):
+        raise ValueError("AI応答が想定形式（JSONオブジェクト）ではありません")
+    return result
 
 
 async def generate_slides_from_structure(structure: dict) -> list[dict]:
@@ -111,26 +129,11 @@ async def generate_slides_from_structure(structure: dict) -> list[dict]:
 - items の accent フィールドは3col-categoryのカテゴリ振り分けに使用
 - character_emotion はスライドの雰囲気に合わせて選ぶ（jo→explaining/normal, ha→thinking/surprised/sad, kyu→smug/happy）"""
 
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
-    raw = re.sub(r"```(?:json)?\s*", "", raw).strip()
-    match = re.search(r"\[[\s\S]*\]", raw)
-    if match:
-        raw = match.group(0)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        repaired = repair_json(raw)
-        try:
-            return json.loads(repaired)
-        except json.JSONDecodeError as e:
-            logger.error("JSON parse error (slides) after repair: %s\nRaw: %s", e, raw[:1000])
-            raise ValueError(f"AI応答のJSONパースに失敗: {e}") from e
+    raw = await _call_claude(prompt)
+    result = _parse_ai_json(raw, r"\[[\s\S]*\]", "slides")
+    if not isinstance(result, list) or not all(isinstance(s, dict) for s in result):
+        raise ValueError("AI応答が想定形式（スライドのJSON配列）ではありません")
+    return result
 
 
 async def improve_slide(slide: dict, instruction: str) -> dict:
@@ -144,14 +147,12 @@ async def improve_slide(slide: dict, instruction: str) -> dict:
 改善後のスライドをJSON形式で返してください（コードブロックなし、JSONのみ）。
 元のフィールド構造を維持してください。"""
 
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=2048,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    raw = message.content[0].text.strip()
-    match = re.search(r"\{[\s\S]*\}", raw)
-    if match:
-        raw = match.group(0)
-    return json.loads(raw)
+    raw = await _call_claude(prompt, max_tokens=2048)
+    result = _parse_ai_json(raw, r"\{[\s\S]*\}", "improve")
+    if not isinstance(result, dict):
+        raise ValueError("AI応答が想定形式（JSONオブジェクト）ではありません")
+    # id と order は改善で変わってはいけない
+    result["id"] = slide.get("id", result.get("id"))
+    if "order" in slide:
+        result["order"] = slide["order"]
+    return result

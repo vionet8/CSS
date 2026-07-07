@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -6,7 +7,14 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.api import projects, content, images, characters
 
-app = FastAPI(title="Content Structure Studio API", version="0.1.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(title="Content Structure Studio API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,11 +32,6 @@ app.include_router(characters.router)
 _static = Path(__file__).parent.parent / "static"
 if _static.exists():
     app.mount("/static", StaticFiles(directory=str(_static)), name="static")
-
-
-@app.on_event("startup")
-async def startup():
-    await init_db()
 
 
 @app.get("/health")

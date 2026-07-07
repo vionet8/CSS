@@ -21,6 +21,9 @@ export const updateSlide = (projectId: string, slideId: string, data: Record<str
   api.patch(`/projects/${projectId}/slides/${slideId}`, data)
 export const improveSlide = (projectId: string, slideId: string, instruction: string) =>
   api.post(`/projects/${projectId}/slides/improve`, { slide_id: slideId, instruction })
+export const exportProject = (id: string) => api.get(`/projects/${id}/export`)
+export const importProject = (data: Record<string, unknown>) =>
+  api.post('/projects/import', data)
 
 // Content
 export const fetchUrl = (url: string) => api.post('/content/fetch-url', { url })

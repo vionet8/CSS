@@ -2,6 +2,20 @@ import { create } from 'zustand'
 import type { Project, ProjectSummary } from '../types'
 import * as api from '../api/client'
 
+/** axios エラーから人間可読な詳細メッセージを取り出す */
+export function errorDetail(e: unknown): string {
+  const axiosErr = e as {
+    response?: { status: number; data?: { detail?: string } | unknown }
+    message?: string
+  }
+  if (axiosErr?.response) {
+    const data = axiosErr.response.data as { detail?: string } | undefined
+    const detail = typeof data?.detail === 'string' ? data.detail : JSON.stringify(data)
+    return `HTTP ${axiosErr.response.status}: ${detail}`
+  }
+  return axiosErr?.message || '不明なエラー'
+}
+
 interface ProjectStore {
   projects: ProjectSummary[]
   currentProject: Project | null
@@ -12,8 +26,8 @@ interface ProjectStore {
   fetchProject: (id: string) => Promise<void>
   createProject: (title: string, description?: string) => Promise<Project>
   updateContent: (id: string, content: string) => Promise<void>
-  analyzeContent: (id: string) => Promise<void>
-  generateSlides: (id: string) => Promise<void>
+  analyzeContent: (id: string) => Promise<boolean>
+  generateSlides: (id: string) => Promise<boolean>
   deleteProject: (id: string) => Promise<void>
   clearError: () => void
 }
@@ -34,11 +48,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       }
       set({ projects: res.data, loading: false })
     } catch (e: unknown) {
-      const axiosErr = e as { response?: { status: number; data?: unknown }; message?: string }
-      const detail = axiosErr?.response
-        ? `HTTP ${axiosErr.response.status}: ${JSON.stringify(axiosErr.response.data)}`
-        : axiosErr?.message || '不明なエラー'
-      set({ error: `プロジェクト一覧の取得に失敗しました — ${detail}`, loading: false })
+      set({ error: `プロジェクト一覧の取得に失敗しました — ${errorDetail(e)}`, loading: false })
     }
   },
 
@@ -48,11 +58,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const res = await api.getProject(id)
       set({ currentProject: res.data, loading: false })
     } catch (e: unknown) {
-      const axiosErr = e as { response?: { status: number; data?: unknown }; message?: string }
-      const detail = axiosErr?.response
-        ? `HTTP ${axiosErr.response.status}: ${JSON.stringify(axiosErr.response.data)}`
-        : axiosErr?.message || '不明なエラー'
-      set({ error: `プロジェクトの取得に失敗しました — ${detail}`, loading: false })
+      set({ error: `プロジェクトの取得に失敗しました — ${errorDetail(e)}`, loading: false })
     }
   },
 
@@ -74,9 +80,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       await api.analyzeProject(id)
       const res = await api.getProject(id)
       set({ currentProject: res.data, loading: false })
+      return true
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : '分析に失敗しました'
-      set({ error: msg, loading: false })
+      set({ error: `構造分析に失敗しました — ${errorDetail(e)}`, loading: false })
+      return false
     }
   },
 
@@ -86,8 +93,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       await api.generateSlides(id)
       const res = await api.getProject(id)
       set({ currentProject: res.data, loading: false })
-    } catch {
-      set({ error: 'スライド生成に失敗しました', loading: false })
+      return true
+    } catch (e: unknown) {
+      set({ error: `スライド生成に失敗しました — ${errorDetail(e)}`, loading: false })
+      return false
     }
   },
 

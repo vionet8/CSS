@@ -4,6 +4,7 @@ import type { Slide, TemplateType, CharacterEmotion } from '../types'
 import { SlideRenderer, TEMPLATE_LABELS } from './templates'
 import CharacterPositionEditor from './CharacterPositionEditor'
 import * as api from '../api/client'
+import { errorDetail } from '../store/projectStore'
 
 interface Props {
   slide: Slide
@@ -51,6 +52,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
       const res = await api.updateSlide(projectId, slide.id, { character_x: x, character_y: y, character_scale: s })
       onUpdate(res.data.slide)
       setPositionEditing(false)
+    } catch (e) {
+      alert(`配置の保存に失敗しました: ${errorDetail(e)}`)
     } finally {
       setBusy(false)
     }
@@ -62,6 +65,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
       const res = await api.updateSlide(projectId, slide.id, draft)
       onUpdate(res.data.slide)
       setEditing(false)
+    } catch (e) {
+      alert(`スライドの保存に失敗しました: ${errorDetail(e)}`)
     } finally {
       setBusy(false)
     }
@@ -75,6 +80,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
       onUpdate(res.data.slide)
       setImproving(false)
       setInstruction('')
+    } catch (e) {
+      alert(`AI改善に失敗しました: ${errorDetail(e)}`)
     } finally {
       setBusy(false)
     }
@@ -86,6 +93,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
       const res = await api.updateSlide(projectId, slide.id, { template: t })
       onUpdate(res.data.slide)
       setChangingTemplate(false)
+    } catch (e) {
+      alert(`テンプレート変更に失敗しました: ${errorDetail(e)}`)
     } finally {
       setBusy(false)
     }
@@ -97,6 +106,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
       const res = await api.updateSlide(projectId, slide.id, { character_emotion: e })
       onUpdate(res.data.slide)
       setChangingEmotion(false)
+    } catch (err) {
+      alert(`表情変更に失敗しました: ${errorDetail(err)}`)
     } finally {
       setBusy(false)
     }
