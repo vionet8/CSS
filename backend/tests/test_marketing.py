@@ -22,7 +22,18 @@ async def test_marketing_options(client):
     ids = {f["id"] for f in data["frameworks"]}
     assert {"pasona", "aidma", "fab"} <= ids
     asset_ids = {a["id"] for a in data["asset_types"]}
-    assert {"x_post", "lp_copy", "sales_email", "press_release", "ad_copy"} <= asset_ids
+    assert {"catchcopy", "x_post", "lp_copy", "sales_email", "press_release", "ad_copy"} <= asset_ids
+
+
+def test_catchcopy_spec():
+    """キャッチコピーは10案・全テーマが指示に含まれること。"""
+    from app.services.marketing_service import ASSET_TYPES, CATCHCOPY_THEMES
+
+    spec = ASSET_TYPES["catchcopy"]
+    assert spec["count"] == 10
+    assert len(CATCHCOPY_THEMES) == 10
+    for theme in CATCHCOPY_THEMES:
+        assert theme in spec["instruction"]
 
 
 async def test_profile_save_and_persist(client):
