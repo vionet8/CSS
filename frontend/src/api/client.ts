@@ -77,6 +77,16 @@ export const getSrt = (id: string) =>
 export const videoFileUrl = (id: string) => `${API_BASE}/projects/${id}/video/file`
 export const videoSrtUrl = (id: string) => `${API_BASE}/projects/${id}/video/file.srt`
 
+// Media (動画・音声取り込み)
+export const getMediaTools = () => api.get('/media/tools')
+export const uploadMedia = (file: File) => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return api.post('/media/upload', fd, { timeout: 600000 })
+}
+export const transcribeMedia = (filename: string, modelSize = 'small') =>
+  api.post('/media/transcribe', { filename, model_size: modelSize }, { timeout: 1800000 })
+
 // Characters
 export const getCharacters = () => api.get('/characters/')
 export const getCharacterEmotions = (name: string) => api.get(`/characters/${name}/emotions`)

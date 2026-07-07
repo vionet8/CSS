@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2 } from 'lucide-react'
+import { ArrowLeft, Brain, Wand2, Link2, FileText, Upload, Maximize2, Clapperboard } from 'lucide-react'
 import FullscreenPresenter from '../components/FullscreenPresenter'
 import { useProjectStore, errorDetail } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
@@ -23,6 +23,7 @@ export default function ProjectDetailPage() {
   const [content, setContent] = useState('')
   const [urlInput, setUrlInput] = useState('')
   const [urlLoading, setUrlLoading] = useState(false)
+  const [mediaStatus, setMediaStatus] = useState<string | null>(null)
   const [slides, setSlides] = useState<Slide[]>([])
   const [characters, setCharacters] = useState<CharacterMeta[]>([])
   const [selectedCharacter, setSelectedCharacter] = useState<string>('')
@@ -70,6 +71,29 @@ export default function ProjectDetailPage() {
     } catch (err) {
       alert(`PDF読み込みエラー: ${errorDetail(err)}`)
     } finally {
+      e.target.value = ''
+    }
+  }
+
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const tools = (await api.getMediaTools()).data
+      if (!tools.whisper) {
+        alert(`文字起こしに必要なツールが不足しています:\n\n${Object.values(tools.hints).join('\n\n')}`)
+        return
+      }
+      setMediaStatus('アップロード中...')
+      const up = await api.uploadMedia(file)
+      setMediaStatus('文字起こし中...（動画の長さに応じて数分かかります）')
+      const res = await api.transcribeMedia(up.data.filename)
+      const header = `# ${file.name} の文字起こし\n\n`
+      setContent((prev) => (prev ? prev + '\n\n---\n\n' + header + res.data.text : header + res.data.text))
+    } catch (err) {
+      alert(`動画/音声の取り込みエラー: ${errorDetail(err)}`)
+    } finally {
+      setMediaStatus(null)
       e.target.value = ''
     }
   }
@@ -206,6 +230,19 @@ export default function ProjectDetailPage() {
                 <Upload size={14} />
                 PDF
                 <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
+              </label>
+              <label
+                title="動画・音声をWhisperで文字起こしして入力に追加します（ローカルに faster-whisper が必要）"
+                className={`flex items-center gap-1.5 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-sm cursor-pointer ${mediaStatus ? 'opacity-50 pointer-events-none' : ''}`}
+              >
+                <Clapperboard size={14} />
+                {mediaStatus ?? '動画/音声'}
+                <input
+                  type="file"
+                  accept=".mp4,.mov,.webm,.mkv,.mp3,.wav,.m4a,.aac"
+                  className="hidden"
+                  onChange={handleMediaUpload}
+                />
               </label>
             </div>
 
