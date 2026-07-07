@@ -6,6 +6,7 @@ import { useProjectStore, errorDetail } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
 import SlideCard from '../components/SlideCard'
 import MarketingPanel from '../components/MarketingPanel'
+import VideoExportPanel from '../components/VideoExportPanel'
 import type { Slide } from '../types'
 import * as api from '../api/client'
 
@@ -272,6 +273,14 @@ export default function ProjectDetailPage() {
                   <Maximize2 size={14} /> 全画面プレゼン
                 </button>
               </div>
+            )}
+
+            {slides.length > 0 && (
+              <VideoExportPanel
+                slides={slides}
+                projectId={currentProject.id}
+                character={selectedCharacter || undefined}
+              />
             )}
 
             {slides.length === 0 ? (

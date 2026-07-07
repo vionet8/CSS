@@ -61,6 +61,22 @@ export const uploadPdf = (file: File) => {
   return api.post('/content/upload-pdf', fd)
 }
 
+// Video
+const API_BASE = import.meta.env.VITE_API_URL || '/api'
+export const getVideoTools = (id: string) => api.get(`/projects/${id}/video/tools`)
+export const uploadVideoFrame = (id: string, order: number, blob: Blob) => {
+  const fd = new FormData()
+  fd.append('order', String(order))
+  fd.append('file', blob, `${order}.png`)
+  return api.post(`/projects/${id}/video/frames`, fd)
+}
+export const renderVideo = (id: string, character: string) =>
+  api.post(`/projects/${id}/video/render`, { character }, { timeout: 600000 })
+export const getSrt = (id: string) =>
+  api.get<string>(`/projects/${id}/video/subtitles.srt`, { responseType: 'text' })
+export const videoFileUrl = (id: string) => `${API_BASE}/projects/${id}/video/file`
+export const videoSrtUrl = (id: string) => `${API_BASE}/projects/${id}/video/file.srt`
+
 // Characters
 export const getCharacters = () => api.get('/characters/')
 export const getCharacterEmotions = (name: string) => api.get(`/characters/${name}/emotions`)
