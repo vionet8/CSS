@@ -77,11 +77,31 @@ childrenには同じ構造のノードを入れてください。"""
     return result
 
 
-async def generate_slides_from_structure(structure: dict) -> list[dict]:
+def _marketing_context(profile: dict | None) -> str:
+    if not profile or not any(profile.values()):
+        return ""
+    lines = ["## セールス文脈（このスライドは販促・営業資料として作る）"]
+    for key, label in [
+        ("product_name", "プロダクト名"),
+        ("target_audience", "ターゲット顧客"),
+        ("goal", "訴求ゴール"),
+        ("tone", "トーン"),
+    ]:
+        if profile.get(key):
+            lines.append(f"- {label}: {profile[key]}")
+    lines.append("- 最後のスライドは訴求ゴールに沿った行動喚起（CTA）で締める")
+    return "\n".join(lines) + "\n"
+
+
+async def generate_slides_from_structure(
+    structure: dict, marketing_profile: dict | None = None
+) -> list[dict]:
     prompt = f"""以下の論理構造からプレゼンテーションスライドを生成してください。
 
 論理構造:
 {json.dumps(structure, ensure_ascii=False, indent=2)}
+
+{_marketing_context(marketing_profile)}
 
 ## スライドは「序・破・急」の3パターンで統一感を出してください
 

@@ -25,6 +25,17 @@ export const exportProject = (id: string) => api.get(`/projects/${id}/export`)
 export const importProject = (data: Record<string, unknown>) =>
   api.post('/projects/import', data)
 
+// Marketing
+export const getMarketingOptions = () => api.get('/marketing/options')
+export const saveMarketingProfile = (id: string, profile: import('../types').MarketingProfile) =>
+  api.put(`/projects/${id}/marketing/profile`, profile)
+export const analyzeMarketing = (id: string, framework: string) =>
+  api.post(`/projects/${id}/marketing/analyze`, { framework })
+export const generateMarketingAsset = (id: string, assetType: string) =>
+  api.post(`/projects/${id}/marketing/assets`, { asset_type: assetType })
+export const deleteMarketingAsset = (id: string, assetType: string) =>
+  api.delete(`/projects/${id}/marketing/assets/${assetType}`)
+
 // Content
 export const fetchUrl = (url: string) => api.post('/content/fetch-url', { url })
 export const parseMarkdown = (text: string) => api.post('/content/parse-markdown', { text })

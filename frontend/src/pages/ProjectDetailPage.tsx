@@ -5,12 +5,13 @@ import FullscreenPresenter from '../components/FullscreenPresenter'
 import { useProjectStore, errorDetail } from '../store/projectStore'
 import LogicTree from '../components/LogicTree'
 import SlideCard from '../components/SlideCard'
+import MarketingPanel from '../components/MarketingPanel'
 import type { Slide } from '../types'
 import * as api from '../api/client'
 
 interface CharacterMeta { id: string; label: string; emotions: string[] }
 
-type Tab = 'input' | 'structure' | 'slides'
+type Tab = 'input' | 'structure' | 'slides' | 'marketing'
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -106,7 +107,10 @@ export default function ProjectDetailPage() {
     { key: 'input', label: 'コンテンツ入力' },
     { key: 'structure', label: 'ロジック構造' },
     { key: 'slides', label: 'スライド' },
+    { key: 'marketing', label: 'マーケ素材' },
   ]
+
+  const marketingAssetCount = Object.keys(currentProject.assets?.marketing_assets ?? {}).length
 
   return (
     <div className="flex flex-col h-full">
@@ -155,6 +159,11 @@ export default function ProjectDetailPage() {
             {t.key === 'slides' && slides.length > 0 && (
               <span className="ml-1.5 text-xs bg-brand-500/20 text-brand-400 px-1.5 py-0.5 rounded">
                 {slides.length}
+              </span>
+            )}
+            {t.key === 'marketing' && marketingAssetCount > 0 && (
+              <span className="ml-1.5 text-xs bg-pink-500/20 text-pink-400 px-1.5 py-0.5 rounded">
+                {marketingAssetCount}
               </span>
             )}
           </button>
@@ -288,6 +297,13 @@ export default function ProjectDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {tab === 'marketing' && (
+          <MarketingPanel
+            project={currentProject}
+            onRefresh={() => (id ? fetchProject(id) : undefined)}
+          />
         )}
       </div>
 

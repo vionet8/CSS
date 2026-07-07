@@ -5,7 +5,7 @@ export interface Project {
   raw_content: string
   logic_structure: LogicStructure | null
   slides: Slide[] | null
-  assets: Record<string, unknown> | null
+  assets: ProjectAssets | null
   created_at: string
   updated_at: string
 }
@@ -21,8 +21,10 @@ export interface ProjectSummary {
 }
 
 export interface LogicNode {
+  // 汎用: 現状/問題/原因/解決策/根拠/具体例/結論
+  // マーケ: PASONA/AIDMA/FAB のフレームワーク別ノードタイプ
   id: string
-  type: '現状' | '問題' | '原因' | '解決策' | '根拠' | '具体例' | '結論'
+  type: string
   title: string
   content: string
   children: LogicNode[]
@@ -32,6 +34,47 @@ export interface LogicStructure {
   title: string
   thesis: string
   nodes: LogicNode[]
+  framework?: string
+}
+
+// ---- セールス・マーケティング ----
+
+export interface MarketingProfile {
+  product_name: string
+  target_audience: string
+  goal: string
+  tone: string
+}
+
+export interface AssetVariant {
+  title: string
+  text: string
+}
+
+export interface MarketingAsset {
+  type: string
+  label: string
+  variants: AssetVariant[]
+  generated_at: string
+}
+
+export interface MarketingFramework {
+  id: string
+  label: string
+  description: string
+  node_types: string[]
+}
+
+export interface MarketingAssetType {
+  id: string
+  label: string
+  description: string
+}
+
+export interface ProjectAssets {
+  marketing_profile?: MarketingProfile
+  marketing_assets?: Record<string, MarketingAsset>
+  [key: string]: unknown
 }
 
 export type TemplateType =

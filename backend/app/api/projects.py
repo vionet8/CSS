@@ -189,8 +189,11 @@ async def generate_slides(project_id: str, db: AsyncSession = Depends(get_db)):
     if not project.logic_structure:
         raise HTTPException(status_code=400, detail="Run /analyze first")
 
+    marketing_profile = (project.assets or {}).get("marketing_profile")
     try:
-        slides = await generate_slides_from_structure(project.logic_structure)
+        slides = await generate_slides_from_structure(
+            project.logic_structure, marketing_profile
+        )
     except ValueError as e:
         raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:

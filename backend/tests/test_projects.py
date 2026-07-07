@@ -131,7 +131,7 @@ async def test_generate_slides_requires_structure(client):
 async def test_generate_slides_success(client, monkeypatch):
     slides = [{"id": "s1", "order": 1, "title": "S", "phase": "jo"}]
 
-    async def fake_generate(structure):
+    async def fake_generate(structure, marketing_profile=None):
         return slides
 
     monkeypatch.setattr("app.api.projects.generate_slides_from_structure", fake_generate)
