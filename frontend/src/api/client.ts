@@ -77,6 +77,12 @@ export const getSrt = (id: string) =>
 export const videoFileUrl = (id: string) => `${API_BASE}/projects/${id}/video/file`
 export const videoSrtUrl = (id: string) => `${API_BASE}/projects/${id}/video/file.srt`
 
+// YouTube分析
+export const analyzeYoutube = (id: string, url: string) =>
+  api.post(`/projects/${id}/youtube/analyze`, { url }, { timeout: 300000 })
+export const deleteYoutubeAnalysis = (id: string, videoId: string) =>
+  api.delete(`/projects/${id}/youtube/${videoId}`)
+
 // Media (動画・音声取り込み)
 export const getMediaTools = () => api.get('/media/tools')
 export const uploadMedia = (file: File) => {

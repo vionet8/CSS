@@ -93,7 +93,37 @@ export interface MaterialFragment {
   created_at: string
 }
 
+export interface YoutubeSection {
+  label: string
+  start_sec: number
+  end_sec: number
+  share_pct: number
+  purpose: string
+}
+
+export interface YoutubeAnalysisEntry {
+  video_id: string
+  url: string
+  title: string
+  channel: string
+  duration: number
+  view_count: number
+  like_count: number
+  upload_date: string
+  transcript_text: string
+  analysis: {
+    summary: string
+    hook: string
+    sections: YoutubeSection[]
+    techniques: string[]
+    cta: string
+    takeaways: string[]
+  }
+  analyzed_at: string
+}
+
 export interface ProjectAssets {
+  youtube_analyses?: Record<string, YoutubeAnalysisEntry>
   marketing_profile?: MarketingProfile
   marketing_assets?: Record<string, MarketingAsset>
   profile_audit?: ProfileAudit

@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import projects, content, images, characters, marketing, video, media
+from app.api import projects, content, images, characters, marketing, video, media, youtube
 
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ app.include_router(characters.router)
 app.include_router(marketing.router)
 app.include_router(video.router)
 app.include_router(media.router)
+app.include_router(youtube.router)
 
 _static = Path(__file__).parent.parent / "static"
 if _static.exists():

@@ -32,6 +32,7 @@
 | ⑬ | 外部素材の取り込み | ChatGPT等で作った素材を断片に分解して蓄積し、生成物に自動で散りばめ |
 | ⑭ | LP HTML書き出し | LPコピーから公開可能な一枚HTML（テンプレート3種・キャッチコピー差し替え） |
 | ⑮ | スライド→動画 | PNG書き出し・SRT字幕・VOICEVOX音声＋FFmpegでmp4生成 |
+| ⑯ | YouTube動画分析 | 人気動画の時間配分・フック・CTAをAI分析し、学びを自分のコンテンツへ転用 |
 
 ---
 
@@ -161,7 +162,7 @@ GitHub Actions（`.github/workflows/ci.yml`）が push / PR ごとに両方を�
 | **Phase 2.6** | セールス・マーケ機能（フレームワーク分析・販促素材生成） | ✅ 実装済み |
 | **Phase 3** | スライド→動画（VOICEVOX音声＋FFmpeg合成＋SRT字幕） | ✅ 実装済み |
 | **Phase 3.5** | 動画取り込み（FFmpegカット・Whisper文字起こし→構造分析） | ✅ 実装済み |
-| **Phase 4** | 人気動画分析（YouTube URL → 構成分析） | 🔲 未着手 |
+| **Phase 4** | 人気動画分析（YouTube URL → 構成分析） | ✅ 実装済み |
 | **Phase 5** | 認知変化分析・FPRL モデル | 🔲 未着手 |
 
 詳細な残タスクは `docs/issues.md` の「未解決の課題」を参照。
