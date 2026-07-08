@@ -3,6 +3,7 @@ import { toPng } from 'html-to-image'
 import { Clapperboard, Download, Captions, Film } from 'lucide-react'
 import type { Slide } from '../types'
 import { SlideRenderer } from './templates'
+import CharacterOverlay from './CharacterOverlay'
 import { errorDetail } from '../store/projectStore'
 import * as api from '../api/client'
 
@@ -96,11 +97,6 @@ export default function VideoExportPanel({ slides, projectId, character }: Props
 
   const busy = status !== null
 
-  const emotion = exportSlide?.character_emotion || 'normal'
-  const charX = exportSlide?.character_x ?? 68
-  const charY = exportSlide?.character_y ?? 0
-  const charScale = exportSlide?.character_scale ?? 0.55
-
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
@@ -141,19 +137,7 @@ export default function VideoExportPanel({ slides, projectId, character }: Props
         {exportSlide && (
           <div style={{ position: 'relative', width: 1280, height: 720 }}>
             <SlideRenderer slide={exportSlide} />
-            {character && (
-              <img
-                src={api.getCharacterImageUrl(character, emotion)}
-                alt=""
-                style={{
-                  position: 'absolute',
-                  bottom: `${charY}%`,
-                  left: `${charX}%`,
-                  height: `${charScale * 100}%`,
-                  objectFit: 'contain',
-                }}
-              />
-            )}
+            {character && <CharacterOverlay slide={exportSlide} character={character} />}
           </div>
         )}
       </div>

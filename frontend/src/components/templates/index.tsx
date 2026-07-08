@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import type { Slide, TemplateType } from '../../types'
+import SlideEffects from '../SlideEffects'
 import HeroHeadline from './HeroHeadline'
 import SplitDark from './SplitDark'
 import FullbleedOverlay from './FullbleedOverlay'
@@ -75,6 +76,7 @@ export function SlideRenderer({ slide }: { slide: Slide }) {
         }}
       >
         <Component slide={slide} />
+        <SlideEffects effects={slide.effects} />
       </div>
     </div>
   )

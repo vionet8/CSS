@@ -1,8 +1,10 @@
 import { useState } from 'react'
-import { Pencil, Sparkles, Check, X, LayoutTemplate, User, Move } from 'lucide-react'
-import type { Slide, TemplateType, CharacterEmotion } from '../types'
+import { Pencil, Sparkles, Check, X, LayoutTemplate, User, Move, Zap } from 'lucide-react'
+import type { Slide, TemplateType, CharacterEmotion, SlideEffect } from '../types'
 import { SlideRenderer, TEMPLATE_LABELS } from './templates'
 import CharacterPositionEditor from './CharacterPositionEditor'
+import CharacterOverlay from './CharacterOverlay'
+import { EFFECT_LABELS } from './SlideEffects'
 import * as api from '../api/client'
 import { errorDetail } from '../store/projectStore'
 
@@ -33,6 +35,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
   const [changingTemplate, setChangingTemplate] = useState(false)
   const [changingEmotion, setChangingEmotion] = useState(false)
   const [positionEditing, setPositionEditing] = useState(false)
+  const [effectsEditing, setEffectsEditing] = useState(false)
+  const [lineDraft, setLineDraft] = useState(slide.character_line || '')
   const [instruction, setInstruction] = useState('')
   const [draft, setDraft] = useState({ title: slide.title, body: slide.body })
   const [busy, setBusy] = useState(false)
@@ -100,6 +104,34 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
     }
   }
 
+  const toggleEffect = async (effect: SlideEffect) => {
+    const current = slide.effects ?? []
+    const next = current.includes(effect)
+      ? current.filter((e) => e !== effect)
+      : [...current, effect]
+    setBusy(true)
+    try {
+      const res = await api.updateSlide(projectId, slide.id, { effects: next })
+      onUpdate(res.data.slide)
+    } catch (e) {
+      alert(`演出の変更に失敗しました: ${errorDetail(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveLine = async () => {
+    setBusy(true)
+    try {
+      const res = await api.updateSlide(projectId, slide.id, { character_line: lineDraft.trim() })
+      onUpdate(res.data.slide)
+    } catch (e) {
+      alert(`セリフの保存に失敗しました: ${errorDetail(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const changeEmotion = async (e: CharacterEmotion) => {
     setBusy(true)
     try {
@@ -136,18 +168,8 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
         ) : (
           <div className="relative">
             <SlideRenderer slide={slide} />
-            {charImageUrl && !positionEditing && (
-              <img
-                src={charImageUrl}
-                alt={`${character} ${emotion}`}
-                className="absolute pointer-events-none drop-shadow-lg"
-                style={{
-                  bottom: `${charY}%`,
-                  left:   `${charX}%`,
-                  height: `${charScale * 100}%`,
-                  objectFit: 'contain',
-                }}
-              />
+            {character && !positionEditing && (
+              <CharacterOverlay slide={slide} character={character} />
             )}
           </div>
         )}
@@ -196,6 +218,10 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
                 <Move size={12} /> 配置
               </button>
             )}
+            <button onClick={() => setEffectsEditing((v) => !v)}
+              className="flex items-center gap-1 text-xs text-yellow-400 hover:text-yellow-300">
+              <Zap size={12} /> 演出
+            </button>
             <button onClick={() => setImproving((v) => !v)}
               className="flex items-center gap-1 text-xs text-brand-400 hover:text-brand-300">
               <Sparkles size={12} /> AI改善
@@ -203,6 +229,38 @@ export default function SlideCard({ slide, projectId, character, onUpdate }: Pro
           </>
         )}
       </div>
+
+      {/* Effects picker */}
+      {effectsEditing && (
+        <div className="px-3 pb-3 border-t border-gray-700 pt-2 space-y-2">
+          <div className="flex gap-1.5 flex-wrap">
+            {(Object.entries(EFFECT_LABELS) as [SlideEffect, string][]).map(([key, label]) => (
+              <button key={key} onClick={() => toggleEffect(key)} disabled={busy}
+                className={`px-2 py-1 rounded text-xs transition-colors ${
+                  slide.effects?.includes(key)
+                    ? 'bg-yellow-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 bg-gray-800 rounded px-2 py-1 text-xs text-white outline-none border border-gray-700 focus:border-yellow-500"
+              placeholder="キャラのセリフ（吹き出し・20字以内推奨）"
+              value={lineDraft}
+              maxLength={30}
+              onChange={(e) => setLineDraft(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveLine()}
+            />
+            <button onClick={saveLine} disabled={busy}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 disabled:opacity-50">
+              保存
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Emotion picker */}
       {changingEmotion && (

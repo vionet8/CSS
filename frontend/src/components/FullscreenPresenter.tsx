@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Slide } from '../types'
 import { SlideRenderer } from './templates'
-import * as api from '../api/client'
+import CharacterOverlay from './CharacterOverlay'
 
 interface Props {
   slides: Slide[]
@@ -30,14 +30,6 @@ export default function FullscreenPresenter({ slides, initialIndex = 0, characte
     return () => window.removeEventListener('keydown', handler)
   }, [onClose])
 
-  const charUrl = character
-    ? api.getCharacterImageUrl(character, slide.character_emotion || 'normal')
-    : null
-
-  const charX     = slide.character_x     ?? 68
-  const charY     = slide.character_y     ?? 0
-  const charScale = slide.character_scale ?? 0.55
-
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col select-none">
       {/* Close */}
@@ -57,19 +49,7 @@ export default function FullscreenPresenter({ slides, initialIndex = 0, characte
       <div ref={containerRef} className="flex-1 flex items-center justify-center p-8">
         <div className="relative w-full" style={{ maxWidth: 'calc((100vh - 96px) * 16 / 9)' }}>
           <SlideRenderer slide={slide} />
-          {charUrl && (
-            <img
-              src={charUrl}
-              alt="character"
-              className="absolute pointer-events-none drop-shadow-xl"
-              style={{
-                bottom: `${charY}%`,
-                left:   `${charX}%`,
-                height: `${charScale * 100}%`,
-                objectFit: 'contain',
-              }}
-            />
-          )}
+          {character && <CharacterOverlay slide={slide} character={character} />}
         </div>
       </div>
 

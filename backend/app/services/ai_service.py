@@ -136,7 +136,9 @@ async def generate_slides_from_structure(
     ],
     "speaker_notes": "発表者ノート",
     "source_node_id": "対応するノードID",
-    "character_emotion": "normal|happy|very_happy|surprised|sad|crying|angry|thinking|smug|embarrassed|explaining"
+    "character_emotion": "normal|happy|very_happy|surprised|sad|crying|angry|thinking|smug|embarrassed|explaining",
+    "character_line": "キャラの一言（吹き出し用。感嘆・ツッコミ・問いかけを20字以内。不要なスライドは空文字）",
+    "effects": ["burst|stamp|spotlight から0〜1個。注目させたいスライドのみ"]
   }}
 ]
 
@@ -147,7 +149,9 @@ async def generate_slides_from_structure(
 - accent_color はコンテンツ全体で1色に統一する（途中で変えない）
 - items は flow/3col/4grid/numbered/mvv/hub/3col-category 系のテンプレートで必須（3〜5個）
 - items の accent フィールドは3col-categoryのカテゴリ振り分けに使用
-- character_emotion はスライドの雰囲気に合わせて選ぶ（jo→explaining/normal, ha→thinking/surprised/sad, kyu→smug/happy）"""
+- character_emotion はスライドの雰囲気に合わせて選ぶ（jo→explaining/normal, ha→thinking/surprised/sad, kyu→smug/happy）
+- effects（注目演出）は使いすぎると効果が消える。全体の3割以下に抑え、burst=冒頭フックや衝撃の事実、stamp=最重要ポイント1枚、spotlight=結論・CTA に使う
+- character_line は視聴者の感情を代弁する一言（例:「えっ、そうなの!?」「これは知らなかったのだ」）。全スライドの半分程度に付ける"""
 
     raw = await _call_claude(prompt)
     result = _parse_ai_json(raw, r"\[[\s\S]*\]", "slides")

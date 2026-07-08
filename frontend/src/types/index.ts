@@ -173,6 +173,9 @@ export interface SlideItem {
   accent?: string
 }
 
+// 注目演出（PNG書き出し・動画にも焼き込まれる）
+export type SlideEffect = 'burst' | 'stamp' | 'spotlight'
+
 export type CharacterEmotion =
   | 'normal' | 'happy' | 'very_happy' | 'surprised'
   | 'sad' | 'crying' | 'angry' | 'thinking'
@@ -199,6 +202,8 @@ export interface Slide {
   character_x?: number
   character_y?: number
   character_scale?: number
+  character_line?: string
+  effects?: SlideEffect[]
 }
 
 export interface ImageInfo {
