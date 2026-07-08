@@ -33,6 +33,7 @@
 | ⑭ | LP HTML書き出し | LPコピーから公開可能な一枚HTML（テンプレート3種・キャッチコピー差し替え） |
 | ⑮ | スライド→動画 | PNG書き出し・SRT字幕・VOICEVOX音声＋FFmpegでmp4生成 |
 | ⑯ | YouTube動画分析 | 人気動画の時間配分・フック・CTAをAI分析し、学びを自分のコンテンツへ転用 |
+| ⑰ | FPRL認知変化分析 | 読者の基準（F）を書き換えられる設計かをE₁〜Lの5ゲートで審査し、停滞ポイントと修正案を提示 |
 
 ---
 
@@ -163,6 +164,6 @@ GitHub Actions（`.github/workflows/ci.yml`）が push / PR ごとに両方を�
 | **Phase 3** | スライド→動画（VOICEVOX音声＋FFmpeg合成＋SRT字幕） | ✅ 実装済み |
 | **Phase 3.5** | 動画取り込み（FFmpegカット・Whisper文字起こし→構造分析） | ✅ 実装済み |
 | **Phase 4** | 人気動画分析（YouTube URL → 構成分析） | ✅ 実装済み |
-| **Phase 5** | 認知変化分析・FPRL モデル | 🔲 未着手 |
+| **Phase 5** | 認知変化分析・FPRLモデル（ゲート審査・欠落検出） | ✅ 実装済み |
 
 詳細な残タスクは `docs/issues.md` の「未解決の課題」を参照。

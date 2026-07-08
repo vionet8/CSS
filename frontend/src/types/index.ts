@@ -122,7 +122,24 @@ export interface YoutubeAnalysisEntry {
   analyzed_at: string
 }
 
+export interface FprlStage {
+  id: string
+  status: 'ok' | 'weak' | 'missing'
+  evidence: string
+  comment: string
+}
+
+export interface FprlAnalysis {
+  reader_before: { foundation: string; behavior: string }
+  reader_after: { foundation: string; behavior: string }
+  stages: FprlStage[]
+  gaps: { stage: string; issue: string; fix: string }[]
+  verdict: string
+  analyzed_at: string
+}
+
 export interface ProjectAssets {
+  fprl_analysis?: FprlAnalysis
   youtube_analyses?: Record<string, YoutubeAnalysisEntry>
   marketing_profile?: MarketingProfile
   marketing_assets?: Record<string, MarketingAsset>

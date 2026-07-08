@@ -77,6 +77,11 @@ export const getSrt = (id: string) =>
 export const videoFileUrl = (id: string) => `${API_BASE}/projects/${id}/video/file`
 export const videoSrtUrl = (id: string) => `${API_BASE}/projects/${id}/video/file.srt`
 
+// FPRL認知変化分析
+export const getFprlStages = () => api.get('/projects/x/fprl/stages')
+export const analyzeFprl = (id: string) =>
+  api.post(`/projects/${id}/fprl/analyze`, {}, { timeout: 300000 })
+
 // YouTube分析
 export const analyzeYoutube = (id: string, url: string) =>
   api.post(`/projects/${id}/youtube/analyze`, { url }, { timeout: 300000 })

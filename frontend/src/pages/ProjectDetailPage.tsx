@@ -8,12 +8,13 @@ import SlideCard from '../components/SlideCard'
 import MarketingPanel from '../components/MarketingPanel'
 import VideoExportPanel from '../components/VideoExportPanel'
 import YoutubePanel from '../components/YoutubePanel'
+import FprlPanel from '../components/FprlPanel'
 import type { Slide } from '../types'
 import * as api from '../api/client'
 
 interface CharacterMeta { id: string; label: string; emotions: string[] }
 
-type Tab = 'input' | 'structure' | 'slides' | 'marketing' | 'youtube'
+type Tab = 'input' | 'structure' | 'slides' | 'marketing' | 'youtube' | 'fprl'
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -135,6 +136,7 @@ export default function ProjectDetailPage() {
     { key: 'slides', label: 'スライド' },
     { key: 'marketing', label: 'マーケ素材' },
     { key: 'youtube', label: '動画分析' },
+    { key: 'fprl', label: '認知変化' },
   ]
 
   const marketingAssetCount = Object.keys(currentProject.assets?.marketing_assets ?? {}).length
@@ -362,6 +364,13 @@ export default function ProjectDetailPage() {
               setContent((prev) => (prev ? prev + '\n\n---\n\n' + text : text))
               setTab('input')
             }}
+          />
+        )}
+
+        {tab === 'fprl' && (
+          <FprlPanel
+            project={currentProject}
+            onRefresh={() => (id ? fetchProject(id) : undefined)}
           />
         )}
       </div>
