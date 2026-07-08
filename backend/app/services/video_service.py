@@ -1,11 +1,18 @@
 """スライド→動画パイプライン。
 
-発表者ノート → VOICEVOX音声 → スライドPNG + FFmpeg合成 → mp4 + SRT字幕。
-FFmpeg / VOICEVOX はユーザー環境のローカルツールを使うため、
+発表者ノート → 音声合成 → スライドPNG + FFmpeg合成 → mp4 + SRT字幕。
+FFmpeg / 音声エンジンはユーザー環境のローカルツールを使うため、
 実行前に check_tools() で利用可否を検出し、無ければ導入方法を案内する。
+
+音声エンジンはキャラクターごとに切り替えられる（CHARACTER_VOICES）:
+- voicevox: ローカルVOICEVOXエンジンのHTTP API（ずんだもん・めたん等）
+- aquestalk: AquesTalkPlayer.exe をサブプロセス実行（れいむ・まりさ等の「ゆっくり」系）
+  個人非営利は無料、商用利用は別途ライセンス購入が必要
+  （https://store.a-quest.com/categories/618932）
 """
 import asyncio
 import shutil
+import tempfile
 import wave
 from pathlib import Path
 
@@ -13,28 +20,42 @@ import httpx
 
 from app.core.config import settings
 
-# VOICEVOX の話者ID（ノーマルスタイル）
-SPEAKERS = {"zundamon": 3, "metan": 2}
+# キャラクター → 音声エンジン + ボイスID のマッピング
+CHARACTER_VOICES: dict[str, dict] = {
+    "zundamon": {"engine": "voicevox", "voice": 3},
+    "metan": {"engine": "voicevox", "voice": 2},
+    "reimu": {"engine": "aquestalk", "voice": "れいむ"},
+    "marisa": {"engine": "aquestalk", "voice": "まりさ"},
+}
 
 # 字幕の長さ推定: 日本語読み上げ ≒ 7文字/秒
 CHARS_PER_SEC = 7.0
 MIN_SLIDE_SEC = 2.0
 
 
-async def check_tools() -> dict:
-    ffmpeg = shutil.which("ffmpeg") is not None
-    voicevox = False
+def aquestalk_available() -> bool:
+    path = settings.AQUESTALK_PLAYER_PATH
+    return bool(path) and Path(path).exists()
+
+
+async def _voicevox_available() -> bool:
     try:
         async with httpx.AsyncClient(timeout=3) as client:
             r = await client.get(f"{settings.VOICEVOX_URL}/version")
-            voicevox = r.status_code == 200
+            return r.status_code == 200
     except Exception:
-        pass
-    return {"ffmpeg": ffmpeg, "voicevox": voicevox}
+        return False
 
 
-async def synthesize(text: str, speaker_id: int) -> bytes:
-    """VOICEVOX で音声合成して WAV バイト列を返す。"""
+async def check_tools() -> dict:
+    return {
+        "ffmpeg": shutil.which("ffmpeg") is not None,
+        "voicevox": await _voicevox_available(),
+        "aquestalk": aquestalk_available(),
+    }
+
+
+async def _synthesize_voicevox(text: str, speaker_id: int) -> bytes:
     async with httpx.AsyncClient(timeout=120) as client:
         q = await client.post(
             f"{settings.VOICEVOX_URL}/audio_query",
@@ -48,6 +69,37 @@ async def synthesize(text: str, speaker_id: int) -> bytes:
         )
         r.raise_for_status()
         return r.content
+
+
+async def _synthesize_aquestalk(text: str, preset: str) -> bytes:
+    if not settings.AQUESTALK_PLAYER_PATH:
+        raise RuntimeError(
+            "AquesTalkPlayerのパスが未設定です（backend/.env の AQUESTALK_PLAYER_PATH）"
+        )
+    with tempfile.TemporaryDirectory() as td:
+        out = Path(td) / "voice.wav"
+        proc = await asyncio.create_subprocess_exec(
+            settings.AQUESTALK_PLAYER_PATH, "/P", preset, "/T", text, "/W", str(out),
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await proc.communicate()
+        if proc.returncode != 0 or not out.exists():
+            raise RuntimeError(
+                f"AquesTalkPlayer失敗: {stderr.decode(errors='replace')[:500]}"
+            )
+        return out.read_bytes()
+
+
+async def synthesize(text: str, character: str) -> bytes:
+    """キャラクターに応じた音声エンジンで合成する。"""
+    voice = CHARACTER_VOICES.get(character)
+    if not voice:
+        raise ValueError(f"未対応のキャラクターです: {character}")
+    if voice["engine"] == "voicevox":
+        return await _synthesize_voicevox(text, voice["voice"])
+    if voice["engine"] == "aquestalk":
+        return await _synthesize_aquestalk(text, voice["voice"])
+    raise ValueError(f"未対応の音声エンジンです: {voice['engine']}")
 
 
 def wav_duration(path: Path) -> float:
@@ -100,8 +152,8 @@ async def _run_ffmpeg(*args: str):
         raise RuntimeError(f"FFmpeg失敗: {stderr.decode(errors='replace')[:500]}")
 
 
-async def render_video(work_dir: Path, slides: list[dict], speaker_id: int) -> dict:
-    """フレームPNG + VOICEVOX音声から mp4 と SRT を生成する。
+async def render_video(work_dir: Path, slides: list[dict], character: str) -> dict:
+    """フレームPNG + 音声から mp4 と SRT を生成する。
 
     work_dir には {order:03d}.png が事前アップロードされていること。
     戻り値: {"video": Path, "srt": Path, "duration": 秒, "slide_count": n}
@@ -120,7 +172,7 @@ async def render_video(work_dir: Path, slides: list[dict], speaker_id: int) -> d
 
         if text:
             wav = work_dir / f"voice_{order:03d}.wav"
-            wav.write_bytes(await synthesize(text, speaker_id))
+            wav.write_bytes(await synthesize(text, character))
             durations[slide.get("id", "")] = wav_duration(wav)
             await _run_ffmpeg(
                 "-loop", "1", "-i", str(frame), "-i", str(wav),

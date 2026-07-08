@@ -1,6 +1,10 @@
 import io
+from pathlib import Path
+
+import pytest
 from PIL import Image
 
+from app.services import video_service
 from app.services.video_service import _fmt_ts, estimate_duration, slides_to_srt
 
 SLIDES = [
@@ -91,7 +95,7 @@ async def test_frame_upload_validation(client):
 
 async def test_render_reports_missing_tools(client, monkeypatch):
     async def no_tools():
-        return {"ffmpeg": False, "voicevox": False}
+        return {"ffmpeg": False, "voicevox": False, "aquestalk": False}
 
     monkeypatch.setattr("app.api.video.check_tools", no_tools)
     p = await create_project(client, slides=SLIDES)
@@ -100,12 +104,32 @@ async def test_render_reports_missing_tools(client, monkeypatch):
     assert "ffmpeg" in res.json()["detail"]
 
 
+async def test_render_only_requires_relevant_engine(client, monkeypatch):
+    """ffmpeg+voicevoxはあるがaquestalkが無い場合、zundamon(voicevox)は通り、reimu(aquestalk)は弾かれる。"""
+    async def partial_tools():
+        return {"ffmpeg": True, "voicevox": True, "aquestalk": False}
+
+    async def fake_render(work_dir, slides, character):
+        return {"video": None, "srt": None, "duration": 1.0, "slide_count": len(slides)}
+
+    monkeypatch.setattr("app.api.video.check_tools", partial_tools)
+    monkeypatch.setattr("app.api.video.render_video", fake_render)
+    p = await create_project(client, slides=SLIDES)
+
+    res = await client.post(f"/projects/{p['id']}/video/render", json={"character": "zundamon"})
+    assert res.status_code == 200
+
+    res = await client.post(f"/projects/{p['id']}/video/render", json={"character": "reimu"})
+    assert res.status_code == 503
+    assert "aquestalk" in res.json()["detail"]
+
+
 async def test_render_success_path(client, monkeypatch, tmp_path):
     async def ok_tools():
-        return {"ffmpeg": True, "voicevox": True}
+        return {"ffmpeg": True, "voicevox": True, "aquestalk": True}
 
-    async def fake_render(work_dir, slides, speaker_id):
-        assert speaker_id == 2  # metan
+    async def fake_render(work_dir, slides, character):
+        assert character == "metan"
         return {"video": tmp_path / "o.mp4", "srt": tmp_path / "o.srt",
                 "duration": 12.3, "slide_count": len(slides)}
 
@@ -132,5 +156,98 @@ async def test_tools_endpoint(client):
     res = await client.get("/projects/x/video/tools")
     assert res.status_code == 200
     body = res.json()
-    assert set(body["speakers"]) == {"zundamon", "metan"}
+    assert set(body["characters"]) == {"zundamon", "metan", "reimu", "marisa"}
     assert "ffmpeg" in body
+    assert "aquestalk" in body
+
+
+# ---- 音声エンジンの振り分け ----
+
+
+async def test_synthesize_dispatches_by_character(monkeypatch):
+    calls = []
+
+    async def fake_vv(text, voice):
+        calls.append(("voicevox", voice))
+        return b"v"
+
+    async def fake_aq(text, voice):
+        calls.append(("aquestalk", voice))
+        return b"a"
+
+    monkeypatch.setattr(video_service, "_synthesize_voicevox", fake_vv)
+    monkeypatch.setattr(video_service, "_synthesize_aquestalk", fake_aq)
+
+    assert await video_service.synthesize("こんにちは", "zundamon") == b"v"
+    assert calls[-1] == ("voicevox", 3)
+
+    assert await video_service.synthesize("ゆっくりしていってね", "reimu") == b"a"
+    assert calls[-1] == ("aquestalk", "れいむ")
+
+    assert await video_service.synthesize("霊夢", "marisa") == b"a"
+    assert calls[-1] == ("aquestalk", "まりさ")
+
+
+async def test_synthesize_unknown_character_raises():
+    with pytest.raises(ValueError):
+        await video_service.synthesize("text", "unknown")
+
+
+def test_aquestalk_available(monkeypatch, tmp_path):
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", "")
+    assert video_service.aquestalk_available() is False
+
+    exe = tmp_path / "AquesTalkPlayer.exe"
+    exe.write_bytes(b"x")
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", str(exe))
+    assert video_service.aquestalk_available() is True
+
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", str(tmp_path / "missing.exe"))
+    assert video_service.aquestalk_available() is False
+
+
+async def test_synthesize_aquestalk_requires_configured_path(monkeypatch):
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", "")
+    with pytest.raises(RuntimeError, match="AQUESTALK_PLAYER_PATH"):
+        await video_service._synthesize_aquestalk("text", "れいむ")
+
+
+async def test_synthesize_aquestalk_invokes_player_with_preset(monkeypatch):
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", "/fake/AquesTalkPlayer.exe")
+    captured = {}
+
+    class FakeProc:
+        returncode = 0
+
+        async def communicate(self):
+            return b"", b""
+
+    async def fake_exec(*args, **kwargs):
+        captured["args"] = args
+        out_path = Path(args[args.index("/W") + 1])
+        out_path.write_bytes(b"RIFFDATA")
+        return FakeProc()
+
+    monkeypatch.setattr(video_service.asyncio, "create_subprocess_exec", fake_exec)
+    data = await video_service._synthesize_aquestalk("ゆっくりしていってね", "れいむ")
+    assert data == b"RIFFDATA"
+    assert "/P" in captured["args"]
+    assert "れいむ" in captured["args"]
+    assert "/T" in captured["args"]
+
+
+async def test_synthesize_aquestalk_raises_on_failure(monkeypatch):
+    monkeypatch.setattr(video_service.settings, "AQUESTALK_PLAYER_PATH", "/fake/AquesTalkPlayer.exe")
+
+    class FakeProc:
+        returncode = 1
+
+        async def communicate(self):
+            return b"", b"error occurred"
+
+    async def fake_exec(*args, **kwargs):
+        return FakeProc()
+
+    monkeypatch.setattr(video_service.asyncio, "create_subprocess_exec", fake_exec)
+    with pytest.raises(RuntimeError, match="AquesTalkPlayer"):
+        await video_service._synthesize_aquestalk("text", "まりさ")

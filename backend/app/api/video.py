@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.project import Project
 from app.services.video_service import (
-    SPEAKERS,
+    CHARACTER_VOICES,
     check_tools,
     render_video,
     slides_to_srt,
@@ -43,14 +43,20 @@ def _work_dir(project_id: str) -> Path:
 
 @router.get("/tools")
 async def video_tools():
-    """FFmpeg / VOICEVOX の利用可否と導入方法を返す。"""
+    """FFmpeg / 各音声エンジンの利用可否と導入方法を返す。"""
     tools = await check_tools()
     hints = {}
     if not tools["ffmpeg"]:
         hints["ffmpeg"] = "winget install Gyan.FFmpeg でインストール後、ターミナルを再起動してください"
     if not tools["voicevox"]:
-        hints["voicevox"] = "https://voicevox.hiroshiba.jp/ からインストールし、VOICEVOXを起動しておいてください"
-    return {**tools, "hints": hints, "speakers": list(SPEAKERS)}
+        hints["voicevox"] = "https://voicevox.hiroshiba.jp/ からインストールし、VOICEVOXを起動しておいてください（ずんだもん・めたん用）"
+    if not tools["aquestalk"]:
+        hints["aquestalk"] = (
+            "AquesTalkPlayerをインストールし、backend/.env の AQUESTALK_PLAYER_PATH に"
+            "exeのパスを設定してください（れいむ・まりさ用。個人非営利は無料、"
+            "商用利用は https://store.a-quest.com/categories/618932 でライセンス購入が必要）"
+        )
+    return {**tools, "hints": hints, "characters": list(CHARACTER_VOICES)}
 
 
 @router.post("/frames")
@@ -92,17 +98,19 @@ async def export_srt(project_id: str, db: AsyncSession = Depends(get_db)):
 async def render(
     project_id: str, req: RenderRequest, db: AsyncSession = Depends(get_db)
 ):
-    """フレームPNG + VOICEVOX音声からmp4を合成する。"""
-    if req.character not in SPEAKERS:
+    """フレームPNG + 音声からmp4を合成する（音声エンジンはキャラクターごとに自動選択）。"""
+    voice_cfg = CHARACTER_VOICES.get(req.character)
+    if not voice_cfg:
         raise HTTPException(
-            status_code=400, detail=f"character は {', '.join(SPEAKERS)} のいずれか"
+            status_code=400, detail=f"character は {', '.join(CHARACTER_VOICES)} のいずれか"
         )
     project = await _get_project(project_id, db)
     if not project.slides:
         raise HTTPException(status_code=400, detail="スライドがありません")
 
     tools = await check_tools()
-    missing = [k for k, ok in tools.items() if not ok]
+    required = ["ffmpeg", voice_cfg["engine"]]
+    missing = [t for t in required if not tools[t]]
     if missing:
         raise HTTPException(
             status_code=503,
@@ -111,7 +119,7 @@ async def render(
 
     try:
         result = await render_video(
-            _work_dir(project_id), project.slides, SPEAKERS[req.character]
+            _work_dir(project_id), project.slides, req.character
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
